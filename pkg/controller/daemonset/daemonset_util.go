@@ -453,3 +453,19 @@ func GetDaemonsetAnnotationByName(ds *apps.DaemonSet, key string) string {
 	}
 	return ""
 }
+
+func isPodNilOrPreDeleting(pod *corev1.Pod) bool {
+	return pod == nil || isPodPreDeleting(pod)
+}
+
+func isPodPreDeleting(pod *corev1.Pod) bool {
+	if pod == nil {
+		return false
+	}
+
+	if precheck, found := pod.Annotations[appspub.DaemonSetPrecheckHookKey]; found {
+		if precheck != "" {
+			return true
+		}
+	}
+}

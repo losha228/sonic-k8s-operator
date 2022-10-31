@@ -45,33 +45,21 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 
 	klog.V(3).Infof("DaemonSet %s/%s, maxUnavailable %v", ds.Namespace, ds.Name, maxUnavailable)
 
-	// Advanced: filter the pods updated, updating and can update, according to partition and selector
+	// filter the pods updated, updating and can update
+	klog.V(3).Infof("DaemonSet %s/%s, filter pods for %v nodes", ds.Namespace, ds.Name, len(nodeList))
 	nodeToDaemonPods, err = dsc.filterDaemonPodsToUpdate(ds, nodeList, hash, nodeToDaemonPods)
 	if err != nil {
 		return fmt.Errorf("failed to filterDaemonPodsToUpdate: %v", err)
 	}
 
-	klog.V(3).Infof("Found %v nodes for DaemonSet %s/%s", len(nodeToDaemonPods), ds.Namespace, ds.Name)
+	klog.V(3).Infof("Will handle pod on %v nodes for DaemonSet %s/%s", len(nodeToDaemonPods), ds.Namespace, ds.Name)
 	now := dsc.failedPodsBackoff.Clock.Now()
-
-	// When not surging, we delete just enough pods to stay under the maxUnavailable limit, if any
-	// are necessary, and let the core loop create new instances on those nodes.
-	//
-	// Assumptions:
-	// * Expect manage loop to allow no more than one pod per node
-	// * Expect manage loop will create new pods
-	// * Expect manage loop will handle failed pods
-	// * Deleted pods do not count as unavailable so that updates make progress when nodes are down
-	// Invariants:
-	// * The number of new pods that are unavailable must be less than maxUnavailable
-	// * A node with an available old pod is a candidate for deletion if it does not violate other invariants
-	//
 
 	var numUnavailable int
 	var allowedReplacementPods []string
 	var candidatePodsToDelete []string
 	for nodeName, pods := range nodeToDaemonPods {
-		klog.V(3).Infof("DaemonSet %s/%s , found pods by hash %s, ", ds.Namespace, ds.Name, hash)
+		klog.V(3).Infof("DaemonSet %s/%s , try to find pods by hash %s, ", ds.Namespace, ds.Name, hash)
 		newPod, oldPod, ok := findUpdatedPodsOnNode(ds, pods, hash)
 		if !ok {
 			// let the manage loop clean up this node, and treat it as an unavailable node
@@ -275,14 +263,9 @@ func (dsc *ReconcileDaemonSet) filterDaemonPodsNodeToUpdate(ds *apps.DaemonSet, 
 			continue
 		}
 
-		// old pod
-		if oldPod != nil {
-			if precheck, found := oldPod.Annotations[appspub.DaemonSetPrecheckHookKey]; found {
-				if precheck != "" {
-					updating = append(updating, nodeName)
-					continue
-				}
-			}
+		if isPodNilOrPreDeleting(oldPod) {
+			updating = append(updating, nodeName)
+			continue
 		}
 
 		if selector != nil {
