@@ -139,6 +139,10 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 			}
 		default:
 			// this pod is old, it is an update candidate
+			if oldPod == nil {
+				klog.V(3).Infof("DaemonSet %s/%s, old pod is null for node %v", ds.Namespace, ds.Name, nodeName)
+			}
+
 			switch {
 			case !podutil.IsPodAvailable(oldPod, ds.Spec.MinReadySeconds, metav1.Time{Time: now}):
 				// the old pod isn't available, so it needs to be replaced
