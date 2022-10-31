@@ -68,6 +68,12 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 			continue
 		}
 
+		// this is invalid case
+		if oldPod == nil && newPod == nil {
+			klog.V(3).Infof("DaemonSet %s/%s, new pod and old pod is null for node %v", ds.Namespace, ds.Name, nodeName)
+			continue
+		}
+
 		// check if the new pod has postcheck tag
 		postCheckPassed := false
 		postcheckPending := false
@@ -126,11 +132,7 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 				klog.V(5).Infof("DaemonSet %s/%s pod %s on node %s is pending on post check", ds.Namespace, ds.Name, newPod.Name, nodeName)
 			}
 		default:
-			// this pod is old, it is an update candidate
-			if oldPod == nil {
-				klog.V(3).Infof("DaemonSet %s/%s, old pod is null for node %v", ds.Namespace, ds.Name, nodeName)
-			}
-
+			klog.V(3).Infof("DaemonSet %s/%s, old pod %v is found on node %v", ds.Namespace, ds.Name, oldPod.Name, nodeName)
 			switch {
 			case !podutil.IsPodAvailable(oldPod, ds.Spec.MinReadySeconds, metav1.Time{Time: now}):
 				// the old pod isn't available, so it needs to be replaced

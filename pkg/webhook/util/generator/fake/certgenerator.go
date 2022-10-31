@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/openkruise/kruise/pkg/webhook/util/generator"
+	"github.com/sonic-net/sonic-k8s-operator/pkg/webhook/util/generator"
 )
 
 // CertGenerator is a certGenerator for testing.
