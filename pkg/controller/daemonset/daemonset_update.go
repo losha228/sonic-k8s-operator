@@ -70,7 +70,7 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 
 		// this is invalid case
 		if oldPod == nil && newPod == nil {
-			klog.V(3).Infof("DaemonSet %s/%s, new pod and old pod is null for node %v", ds.Namespace, ds.Name, nodeName)
+			klog.V(3).Infof("***** DaemonSet %s/%s, new pod and old pod is null for node %v *******", ds.Namespace, ds.Name, nodeName)
 			continue
 		}
 
