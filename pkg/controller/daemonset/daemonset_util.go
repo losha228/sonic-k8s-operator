@@ -468,4 +468,6 @@ func isPodPreDeleting(pod *corev1.Pod) bool {
 			return true
 		}
 	}
+
+	return false
 }
