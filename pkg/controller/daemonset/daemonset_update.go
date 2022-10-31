@@ -47,7 +47,8 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 
 	// filter the pods updated, updating and can update
 	klog.V(3).Infof("DaemonSet %s/%s, filter pods for %v nodes", ds.Namespace, ds.Name, len(nodeList))
-	nodeToDaemonPods, err = dsc.filterDaemonPodsToUpdate(ds, nodeList, hash, nodeToDaemonPods)
+	var nodeNameList []string
+	nodeToDaemonPods, nodeNameList, err = dsc.filterDaemonPodsToUpdate(ds, nodeList, hash, nodeToDaemonPods)
 	if err != nil {
 		return fmt.Errorf("failed to filterDaemonPodsToUpdate: %v", err)
 	}
@@ -58,8 +59,10 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 	var numUnavailable int
 	var allowedReplacementPods []string
 	var candidatePodsToDelete []string
-	for nodeName, pods := range nodeToDaemonPods {
-		klog.V(3).Infof("DaemonSet %s/%s , try to find pods by hash %s, ", ds.Namespace, ds.Name, hash)
+	for _, nodeName := range nodeNameList {
+		pods := nodeToDaemonPods[nodeName]
+
+		klog.V(3).Infof("DaemonSet %s/%s , try to find pods by hash %s on node %s, ", ds.Namespace, ds.Name, hash, nodeName)
 		newPod, oldPod, ok := findUpdatedPodsOnNode(ds, pods, hash)
 		if !ok {
 			// let the manage loop clean up this node, and treat it as an unavailable node
@@ -219,7 +222,7 @@ func GetTemplateGeneration(ds *apps.DaemonSet) (*int64, error) {
 	return &generation, nil
 }
 
-func (dsc *ReconcileDaemonSet) filterDaemonPodsToUpdate(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string, nodeToDaemonPods map[string][]*corev1.Pod) (map[string][]*corev1.Pod, error) {
+func (dsc *ReconcileDaemonSet) filterDaemonPodsToUpdate(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string, nodeToDaemonPods map[string][]*corev1.Pod) (map[string][]*corev1.Pod, []string, error) {
 	existingNodes := sets.NewString()
 	for _, node := range nodeList {
 		existingNodes.Insert(node.Name)
@@ -232,14 +235,14 @@ func (dsc *ReconcileDaemonSet) filterDaemonPodsToUpdate(ds *apps.DaemonSet, node
 
 	nodeNames, err := dsc.filterDaemonPodsNodeToUpdate(ds, hash, nodeToDaemonPods)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ret := make(map[string][]*corev1.Pod, len(nodeNames))
 	for _, name := range nodeNames {
 		ret[name] = nodeToDaemonPods[name]
 	}
-	return ret, nil
+	return ret, nodeNames, nil
 }
 
 func (dsc *ReconcileDaemonSet) filterDaemonPodsNodeToUpdate(ds *apps.DaemonSet, hash string, nodeToDaemonPods map[string][]*corev1.Pod) ([]string, error) {
