@@ -198,7 +198,9 @@ func (e *podEventHandler) deletePod(pod *v1.Pod, q workqueue.RateLimitingInterfa
 	} else {
 		klog.V(4).Infof("Pod %s/%s terminating, owner: %s", pod.Namespace, pod.Name, ds.Name)
 	}
-	enqueueDaemonSet(q, ds)
+
+	// we don't care pod delete event
+	// enqueueDaemonSet(q, ds)
 }
 
 func (e *podEventHandler) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
