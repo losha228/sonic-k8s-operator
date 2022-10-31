@@ -55,7 +55,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: ## Build docker image with the manager.
-    go mod vendor
+	go mod vendor
 	docker build --pull --no-cache . -t ${IMG}
 
 docker-push: ## Push docker image with the manager.
