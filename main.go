@@ -75,7 +75,7 @@ func main() {
 	flag.BoolVar(&allowPrivileged, "allow-privileged", true, "If true, allow privileged containers. It will only work if api-server is also"+
 		"started with --allow-privileged=true.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", true, "Whether you need to enable leader election.")
-	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "sonic-k8s-operator-system",
+	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "sonic-k8s-system",
 		"This determines the namespace in which the leader election configmap will be created, it will use in-cluster namespace if empty.")
 	flag.StringVar(&namespace, "namespace", "",
 		"Namespace if specified restricts the manager's cache to watch objects in the desired namespace. Defaults to all namespaces.")
