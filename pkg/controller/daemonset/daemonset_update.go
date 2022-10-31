@@ -128,8 +128,7 @@ func (dsc *ReconcileDaemonSet) rollingUpdate(ds *apps.DaemonSet, nodeList []*cor
 				// an unavailable new pod is counted against maxUnavailable
 				numUnavailable++
 				klog.V(5).Infof("DaemonSet %s/%s pod %s on node %s is new and unavailable", ds.Namespace, ds.Name, newPod.Name, nodeName)
-			}
-			if !postCheckPassed {
+			} else if !postCheckPassed {
 				// a post check pending or fail for new pod is counted against maxUnavailable
 				numUnavailable++
 				klog.V(5).Infof("DaemonSet %s/%s pod %s on node %s is pending on post check", ds.Namespace, ds.Name, newPod.Name, nodeName)
