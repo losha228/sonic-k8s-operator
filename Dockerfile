@@ -9,7 +9,6 @@ COPY go.sum go.sum
 # Copy the go source
 COPY main.go main.go
 COPY apis/ apis/
-COPY cmd/ cmd/
 COPY pkg/ pkg/
 COPY vendor/ vendor/
 
