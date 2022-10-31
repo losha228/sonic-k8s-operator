@@ -7,23 +7,18 @@ if [ $retVal -ne 0 ]; then
 fi
 
 set -e
-TMP_DIR=$(mktemp -d)
-mkdir -p "${TMP_DIR}"/src/github.com/openkruise/kruise
-cp -r ./{apis,hack,vendor} "${TMP_DIR}"/src/github.com/openkruise/kruise/
 
-(cd "${TMP_DIR}"/src/github.com/openkruise/kruise; \
-    GOPATH=${TMP_DIR} GO111MODULE=off go run vendor/k8s.io/kube-openapi/cmd/openapi-gen/openapi-gen.go \
-    -O openapi_generated -i ./apis/apps/pub -p github.com/openkruise/kruise/apis/apps/pub -h ./hack/boilerplate.go.txt \
-    --report-filename ./violation_exceptions.list)
-(cd "${TMP_DIR}"/src/github.com/openkruise/kruise; \
-    GOPATH=${TMP_DIR} GO111MODULE=off go run vendor/k8s.io/kube-openapi/cmd/openapi-gen/openapi-gen.go \
-    -O openapi_generated -i ./apis/apps/v1alpha1 -p github.com/openkruise/kruise/apis/apps/v1alpha1 -h ./hack/boilerplate.go.txt \
-    --report-filename ./violation_exceptions.list)
-(cd "${TMP_DIR}"/src/github.com/openkruise/kruise; \
-    GOPATH=${TMP_DIR} GO111MODULE=off go run vendor/k8s.io/kube-openapi/cmd/openapi-gen/openapi-gen.go \
-    -O openapi_generated -i ./apis/apps/v1beta1 -p github.com/openkruise/kruise/apis/apps/v1beta1 -h ./hack/boilerplate.go.txt \
-    --report-filename ./violation_exceptions.list)
+# following is an example how to generate code
+#TMP_DIR=$(mktemp -d)
+#mkdir -p "${TMP_DIR}"/src/github.com/sonic-net/sonic-k8s-operator
+#cp -r ./{apis,hack,vendor} "${TMP_DIR}"/src/github.com/sonic-net/sonic-k8s-operator
 
-cp -f "${TMP_DIR}"/src/github.com/openkruise/kruise/apis/apps/pub/openapi_generated.go ./apis/apps/pub
-cp -f "${TMP_DIR}"/src/github.com/openkruise/kruise/apis/apps/v1alpha1/openapi_generated.go ./apis/apps/v1alpha1
-cp -f "${TMP_DIR}"/src/github.com/openkruise/kruise/apis/apps/v1beta1/openapi_generated.go ./apis/apps/v1beta1
+#(cd "${TMP_DIR}"/src/github.com/sonic-net/sonic-k8s-operator; \
+#    GOPATH=${TMP_DIR} GO111MODULE=off go run vendor/k8s.io/kube-openapi/cmd/openapi-gen/openapi-gen.go \
+#    -O openapi_generated -i ./apis/apps/pub -p github.com/sonic-net/sonic-k8s-operator/apis/apps/pub -h ./hack/boilerplate.go.txt \
+#    --report-filename ./violation_exceptions.list)
+
+
+#cp -f "${TMP_DIR}"/src/github.com/sonic-net/sonic-k8s-operator/apis/apps/pub/openapi_generated.go ./apis/apps/pub
+
+

@@ -18,7 +18,7 @@ package controller
 
 import (
 	"github.com/sonic-net/sonic-k8s-operator/pkg/controller/daemonset"
-	"github.com/sonic-net/sonic-k8s-operator/pkg/controller/podreadiness"
+	"github.com/sonic-net/sonic-k8s-operator/pkg/controller/hookchecker"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -28,7 +28,7 @@ var controllerAddFuncs []func(manager.Manager) error
 
 func init() {
 	controllerAddFuncs = append(controllerAddFuncs, daemonset.Add)
-	controllerAddFuncs = append(controllerAddFuncs, podreadiness.Add)
+	controllerAddFuncs = append(controllerAddFuncs, hookchecker.Add)
 }
 
 func SetupWithManager(m manager.Manager) error {

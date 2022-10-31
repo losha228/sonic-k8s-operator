@@ -9,8 +9,8 @@ import (
 
 var leaderMetric = promauto.NewGauge(
 	prometheus.GaugeOpts{
-		Name: "kruise_manager_is_leader",
-		Help: "Gauge the leader of kruise-manager",
+		Name: "sonic_k8s_manager_is_leader",
+		Help: "Gauge the leader of sonic-k8s-manager",
 	},
 )
 

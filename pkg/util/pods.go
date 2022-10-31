@@ -17,11 +17,9 @@ limitations under the License.
 package util
 
 import (
-	"fmt"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
@@ -33,91 +31,6 @@ func GetPodNames(pods []*v1.Pod) sets.String {
 		set.Insert(pod.Name)
 	}
 	return set
-}
-
-// MergePods merges two pods arrays
-func MergePods(pods1, pods2 []*v1.Pod) []*v1.Pod {
-	var ret []*v1.Pod
-	names := sets.NewString()
-
-	for _, pod := range pods1 {
-		if !names.Has(pod.Name) {
-			ret = append(ret, pod)
-			names.Insert(pod.Name)
-		}
-	}
-	for _, pod := range pods2 {
-		if !names.Has(pod.Name) {
-			ret = append(ret, pod)
-			names.Insert(pod.Name)
-		}
-	}
-	return ret
-}
-
-// DiffPods returns pods in pods1 but not in pods2
-func DiffPods(pods1, pods2 []*v1.Pod) (ret []*v1.Pod) {
-	names2 := sets.NewString()
-	for _, pod := range pods2 {
-		names2.Insert(pod.Name)
-	}
-	for _, pod := range pods1 {
-		if names2.Has(pod.Name) {
-			continue
-		}
-		ret = append(ret, pod)
-	}
-	return
-}
-
-func MergeVolumeMounts(original, additional []v1.VolumeMount) []v1.VolumeMount {
-	mountpoints := sets.NewString()
-	for _, mount := range original {
-		mountpoints.Insert(mount.MountPath)
-	}
-
-	for _, mount := range additional {
-		if mountpoints.Has(mount.MountPath) {
-			continue
-		}
-		original = append(original, mount)
-		mountpoints.Insert(mount.MountPath)
-	}
-	return original
-}
-
-func MergeEnvVar(original []v1.EnvVar, additional []v1.EnvVar) []v1.EnvVar {
-	exists := sets.NewString()
-	for _, env := range original {
-		exists.Insert(env.Name)
-	}
-
-	for _, env := range additional {
-		if exists.Has(env.Name) {
-			continue
-		}
-		original = append(original, env)
-		exists.Insert(env.Name)
-	}
-
-	return original
-}
-
-func MergeVolumes(original []v1.Volume, additional []v1.Volume) []v1.Volume {
-	exists := sets.NewString()
-	for _, volume := range original {
-		exists.Insert(volume.Name)
-	}
-
-	for _, volume := range additional {
-		if exists.Has(volume.Name) {
-			continue
-		}
-		original = append(original, volume)
-		exists.Insert(volume.Name)
-	}
-
-	return original
 }
 
 func GetContainerEnvVar(container *v1.Container, key string) *v1.EnvVar {
@@ -206,7 +119,6 @@ func GetPodContainerImageIDs(pod *v1.Pod) map[string]string {
 	cImageIDs := make(map[string]string, len(pod.Status.ContainerStatuses))
 	for i := range pod.Status.ContainerStatuses {
 		c := &pod.Status.ContainerStatuses[i]
-		//ImageID format: docker-pullable://busybox@sha256:a9286defaba7b3a519d585ba0e37d0b2cbee74ebfe590960b0b1d6a5e97d1e1d
 		imageID := c.ImageID
 		if strings.Contains(imageID, "://") {
 			imageID = strings.Split(imageID, "://")[1]
@@ -214,31 +126,6 @@ func GetPodContainerImageIDs(pod *v1.Pod) map[string]string {
 		cImageIDs[c.Name] = imageID
 	}
 	return cImageIDs
-}
-
-func MergeVolumeMountsInContainer(origin *v1.Container, other v1.Container) {
-	mountExist := make(map[string]bool)
-	for _, volume := range origin.VolumeMounts {
-		mountExist[volume.MountPath] = true
-
-	}
-
-	for _, volume := range other.VolumeMounts {
-		if mountExist[volume.MountPath] {
-			continue
-		}
-
-		origin.VolumeMounts = append(origin.VolumeMounts, volume)
-	}
-}
-
-func InjectReadinessGateToPod(pod *v1.Pod, conditionType v1.PodConditionType) {
-	for _, g := range pod.Spec.ReadinessGates {
-		if g.ConditionType == conditionType {
-			return
-		}
-	}
-	pod.Spec.ReadinessGates = append(pod.Spec.ReadinessGates, v1.PodReadinessGate{ConditionType: conditionType})
 }
 
 func ContainsObjectRef(slice []v1.ObjectReference, obj v1.ObjectReference) bool {
@@ -269,44 +156,4 @@ func SetPodCondition(pod *v1.Pod, condition v1.PodCondition) {
 		}
 	}
 	pod.Status.Conditions = append(pod.Status.Conditions, condition)
-}
-
-func SetPodReadyCondition(pod *v1.Pod) {
-	podReady := GetCondition(pod, v1.PodReady)
-	if podReady == nil {
-		return
-	}
-
-	containersReady := GetCondition(pod, v1.ContainersReady)
-	if containersReady == nil || containersReady.Status != v1.ConditionTrue {
-		return
-	}
-
-	var unreadyMessages []string
-	for _, rg := range pod.Spec.ReadinessGates {
-		c := GetCondition(pod, rg.ConditionType)
-		if c == nil {
-			unreadyMessages = append(unreadyMessages, fmt.Sprintf("corresponding condition of pod readiness gate %q does not exist.", string(rg.ConditionType)))
-		} else if c.Status != v1.ConditionTrue {
-			unreadyMessages = append(unreadyMessages, fmt.Sprintf("the status of pod readiness gate %q is not \"True\", but %v", string(rg.ConditionType), c.Status))
-		}
-	}
-
-	newPodReady := v1.PodCondition{
-		Type:               v1.PodReady,
-		Status:             v1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-	}
-	// Set "Ready" condition to "False" if any readiness gate is not ready.
-	if len(unreadyMessages) != 0 {
-		unreadyMessage := strings.Join(unreadyMessages, ", ")
-		newPodReady = v1.PodCondition{
-			Type:    v1.PodReady,
-			Status:  v1.ConditionFalse,
-			Reason:  "ReadinessGatesNotReady",
-			Message: unreadyMessage,
-		}
-	}
-
-	SetPodCondition(pod, newPodReady)
 }

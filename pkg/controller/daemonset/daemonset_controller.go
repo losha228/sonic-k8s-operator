@@ -60,11 +60,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	appspub "github.com/sonic-net/sonic-k8s-operator/apis/apps/pub"
-	// appsv1alpha1 "github.com/sonic-net/sonic-k8s-operator/apis/apps/v1alpha1"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	// appsv1alpha1 "github.com/openkruise/kruise/apis/apps/v1alpha1"
 	"github.com/sonic-net/sonic-k8s-operator/pkg/client"
 	ctrutil "github.com/sonic-net/sonic-k8s-operator/pkg/util"
 	utilclient "github.com/sonic-net/sonic-k8s-operator/pkg/util/client"
@@ -292,8 +290,8 @@ type ReconcileDaemonSet struct {
 // +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=controllerrevisions,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps.kruise.io,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps.kruise.io,resources=daemonsets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get;update;patch
 
 // Reconcile reads that state of the cluster for a DaemonSet object and makes changes based on the state read
 // and what is in the DaemonSet.Spec
@@ -393,13 +391,15 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	}
 	klog.Infof("syncDaemonSet , get node list %v", len(nodeList))
 
-	curVersion, err := dsc.getLastestDsVersion(ds)
-	if err != nil || curVersion == nil {
-		klog.V(4).Infof("Failed to get deamonset version:  %s", err)
-		return nil
-	}
-	cur2, _ := dsc.getCurrentDsVersion(ds)
-	if cur2 == nil {
+	/*
+		curVersion, err := dsc.getLastestDsVersion(ds)
+		if err != nil || curVersion == nil {
+			klog.V(4).Infof("Failed to get deamonset version:  %s", err)
+			return nil
+		}
+	*/
+	curVersion, _ := dsc.getCurrentDsVersion(ds)
+	if curVersion == nil {
 		klog.V(4).Infof("Failed to get deamonset version for %s/%s, will try it later.", ds.Namespace, ds.Name)
 		durationStore.Push(keyFunc(ds), time.Duration(5)*time.Second)
 		return nil

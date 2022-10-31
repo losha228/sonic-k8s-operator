@@ -38,7 +38,6 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 	var workloadReplicas int32
 
 	switch kind {
-	// ReplicaSet
 	case ControllerKindRS.Kind:
 		rs, err := r.getReplicaSet(ControllerReference{APIVersion: apiVersion, Kind: kind, Name: name}, ns)
 		if err != nil {
@@ -49,7 +48,7 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 		}
 		workloadReplicas = *rs.Spec.Replicas
 		workloadUIDs = append(workloadUIDs, rs.UID)
-	// statefulset, rc, cloneSet
+
 	case ControllerKindSS.Kind, ControllerKindRC.Kind:
 		obj, err := r.GetScaleAndSelectorForRef(apiVersion, kind, ns, name, "")
 		if err != nil {
@@ -59,7 +58,7 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 		}
 		workloadReplicas = obj.Scale
 		workloadUIDs = append(workloadUIDs, obj.UID)
-	// Deployment, Deployment-like workload, and other workload
+
 	default:
 		obj, err := r.GetScaleAndSelectorForRef(apiVersion, kind, ns, name, "")
 		if err != nil {
@@ -68,7 +67,6 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 			return nil, 0, nil
 		}
 		workloadReplicas = obj.Scale
-		// try to get replicaSets
 		rss, err := r.getReplicaSetsForDeployment(apiVersion, kind, ns, name)
 		if err != nil {
 			return nil, -1, err
@@ -83,7 +81,6 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 		}
 	}
 
-	// List all Pods owned by workload UID.
 	matchedPods := make([]*corev1.Pod, 0)
 	for _, uid := range workloadUIDs {
 		podList := &corev1.PodList{}
@@ -96,7 +93,6 @@ func (r *ControllerFinder) GetPodsForRef(apiVersion, kind, ns, name string, acti
 		}
 		for i := range podList.Items {
 			pod := &podList.Items[i]
-			// filter not active Pod if active is true.
 			if active && !kubecontroller.IsPodActive(pod) {
 				continue
 			}
@@ -112,7 +108,7 @@ func (r *ControllerFinder) getReplicaSetsForDeployment(apiVersion, kind, ns, nam
 	if err != nil || scaleNSelector == nil {
 		return nil, err
 	}
-	// List ReplicaSets owned by this Deployment
+
 	rsList := &appsv1.ReplicaSetList{}
 	selector, err := util.ValidatedLabelSelectorAsSelector(scaleNSelector.Selector)
 	if err != nil {
