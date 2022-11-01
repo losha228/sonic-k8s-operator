@@ -373,10 +373,10 @@ spec:
             - containerPort: 8000
               name: health
               protocol: TCP
-          #readinessProbe:
-          #  httpGet:
-          #    path: readyz
-          #    port: 8000
+          readinessProbe:
+            httpGet:
+              path: readyz
+              port: 8000
           resources:
             limits:
               cpu: 200m
