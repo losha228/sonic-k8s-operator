@@ -350,7 +350,7 @@ spec:
             - --sync-period=0
           command:
             - /manager
-          image: sonic-net/sonic-k8s-manager:test
+          image: localhost:5000/sonic-net/sonic-k8s-manager:test
           imagePullPolicy: Always
           name: manager
           env:
