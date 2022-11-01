@@ -346,7 +346,6 @@ spec:
             - --logtostderr=true
             - --leader-election-namespace=sonic-k8s-system
             - --v=4
-            - --feature-gates=
             - --sync-period=0
           command:
             - /manager
