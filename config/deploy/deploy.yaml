@@ -1,5 +1,4 @@
 ---
-# Source: kruise/templates/manager.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,33 +6,23 @@ metadata:
     control-plane: controller-manager
   name: sonic-k8s-system
 ---
-# Source: kruise/templates/manager.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kruise-manager
+  name: sonic-k8s-manager
   namespace: sonic-k8s-system
 ---
-# Source: kruise/templates/manager.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kruise-daemon
-  namespace: sonic-k8s-system
----
-# Source: kruise/templates/manager.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: kruise-webhook-certs
+  name: sonic-k8s-webhook-certs
   namespace: sonic-k8s-system
 ---
-# Source: kruise/templates/rbac_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: kruise-manager-role
+  name: sonic-k8s-manager-role
 rules:
 - apiGroups:
   - ""
@@ -114,24 +103,16 @@ rules:
   resources:
   - controllerrevisions
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - apps
   resources:
   - deployments
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - apps
@@ -139,8 +120,6 @@ rules:
   - deployments/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - apps
   resources:
@@ -160,12 +139,8 @@ rules:
   resources:
   - statefulsets
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - apps
@@ -173,332 +148,13 @@ rules:
   - statefulsets/status
   verbs:
   - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - advancedcronjobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - advancedcronjobs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - broadcastjobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - broadcastjobs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - clonesets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - clonesets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - containerrecreaterequests
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - containerrecreaterequests/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - daemonsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - daemonsets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - ephemeraljobs
-  verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - ephemeraljobs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - imagepulljobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - imagepulljobs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodeimages
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodeimages/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodepodprobes
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodepodprobes/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - persistentpodstates
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - persistentpodstates/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - podprobemarkers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - podprobemarkers/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - resourcedistributions
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - resourcedistributions/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - sidecarsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - sidecarsets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - statefulsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - statefulsets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - uniteddeployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - uniteddeployments/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - workloadspreads
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - workloadspreads/status
-  verbs:
-  - get
-  - patch
-  - update
 - apiGroups:
   - batch
   resources:
   - jobs
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - batch
@@ -506,8 +162,6 @@ rules:
   - jobs/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - ""
   resources:
@@ -545,12 +199,8 @@ rules:
   resources:
   - persistentvolumeclaims
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - ""
@@ -592,152 +242,24 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - policy.kruise.io
-  resources:
-  - podunavailablebudgets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - policy.kruise.io
-  resources:
-  - podunavailablebudgets/status
-  verbs:
-  - get
-  - patch
-  - update
 ---
-# Source: kruise/templates/rbac_role.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  creationTimestamp: null
-  name: kruise-daemon-role
-rules:
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodeimages
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodeimages/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - update
-  - patch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - containerrecreaterequests
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - containerrecreaterequests/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodepodprobes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps.kruise.io
-  resources:
-  - nodepodprobes/status
-  verbs:
-  - get
-  - patch
-  - update
----
-# Source: kruise/templates/rbac_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kruise-manager-rolebinding
+  name: sonic-k8s-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kruise-manager-role
+  name: sonic-k8s-manager-role
 subjects:
   - kind: ServiceAccount
-    name: kruise-manager
+    name: sonic-k8s-manager
     namespace: sonic-k8s-system
 ---
-# Source: kruise/templates/rbac_role.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: kruise-daemon-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: kruise-daemon-role
-subjects:
-  - kind: ServiceAccount
-    name: kruise-daemon
-    namespace: sonic-k8s-system
----
-# Source: kruise/templates/rbac_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: kruise-leader-election-role
+  name: sonic-k8s-leader-election-role
   namespace: sonic-k8s-system
 rules:
 - apiGroups:
@@ -767,26 +289,24 @@ rules:
   verbs:
   - create
 ---
-# Source: kruise/templates/rbac_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: kruise-leader-election-rolebinding
+  name: sonic-k8s-leader-election-rolebinding
   namespace: sonic-k8s-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: kruise-leader-election-role
+  name: sonic-k8s-leader-election-role
 subjects:
   - kind: ServiceAccount
-    name: kruise-manager
+    name: sonic-k8s-manager
     namespace: sonic-k8s-system
 ---
-# Source: kruise/templates/manager.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: kruise-webhook-service
+  name: sonic-k8s-webhook-service
   namespace: sonic-k8s-system
 spec:
   ports:
@@ -795,87 +315,12 @@ spec:
   selector:
     control-plane: controller-manager
 ---
-# Source: kruise/templates/manager.yaml
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: kruise-daemon
-  namespace: sonic-k8s-system
-  labels:
-    control-plane: daemon
-spec:
-  selector:
-    matchLabels:
-      control-plane: daemon
-  minReadySeconds: 3
-  updateStrategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 10%
-  template:
-    metadata:
-      labels:
-        control-plane: daemon
-    spec:
-      containers:
-      - command:
-        - /kruise-daemon
-        args:
-        - --logtostderr=true
-        - --v=4
-        - --addr=:10221
-        - --feature-gates=
-        - --socket-file=
-        image: openkruise/kruise-manager:v1.3.0
-        imagePullPolicy: Always
-        name: daemon
-        env:
-        - name: KUBE_CACHE_MUTATION_DETECTOR
-          value: "true"
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /healthz
-            port: 10221
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources:
-            limits:
-              cpu: 50m
-              memory: 128Mi
-            requests:
-              cpu: "0"
-              memory: "0"
-        volumeMounts:
-        - mountPath: /hostvarrun
-          name: runtime-socket
-          readOnly: true
-      tolerations:
-      - operator: Exists
-      hostNetwork: true
-      terminationGracePeriodSeconds: 10
-      serviceAccountName: kruise-daemon
-      volumes:
-      - hostPath:
-          path: /var/run
-          type: ""
-        name: runtime-socket
----
-# Source: kruise/templates/manager.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     control-plane: controller-manager
-  name: kruise-controller-manager
+  name: sonic-k8s-controller-manager
   namespace: sonic-k8s-system
 spec:
   replicas: 2
@@ -905,7 +350,7 @@ spec:
             - --sync-period=0
           command:
             - /manager
-          image: openkruise/kruise-manager:v1.3.0
+          image: sonic-net/sonic-k8s-manager:test
           imagePullPolicy: Always
           name: manager
           env:
@@ -942,7 +387,7 @@ spec:
               memory: 256Mi
       hostNetwork: false
       terminationGracePeriodSeconds: 10
-      serviceAccountName: kruise-manager
+      serviceAccountName: sonic-k8s-manager
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
