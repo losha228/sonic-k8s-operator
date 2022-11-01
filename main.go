@@ -44,6 +44,7 @@ import (
 
 	"github.com/sonic-net/sonic-k8s-operator/pkg/controller"
 	_ "github.com/sonic-net/sonic-k8s-operator/pkg/util/metrics/leadership"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -111,7 +112,7 @@ func main() {
 	setupLog.Info("new clientset registry")
 	err := extclient.NewRegistry(cfg)
 	if err != nil {
-		setupLog.Error(err, "unable to init kruise clientset and informer")
+		setupLog.Error(err, "unable to init clientset and informer")
 		os.Exit(1)
 	}
 
@@ -140,6 +141,12 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	if err := mgr.AddHealthzCheck("default", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to create health check")
+		os.Exit(1)
+	}
+
 	err = controllerfinder.InitControllerFinder(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to start ControllerFinder")
