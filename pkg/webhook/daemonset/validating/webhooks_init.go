@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Sonic_k8s Authors.
+Copyright 2020 The Sonic_k8s Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package validating
 
-import corevalidation "k8s.io/kubernetes/pkg/apis/core/validation"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+)
 
 var (
-	DefaultPodValidationOptions = corevalidation.PodValidationOptions{
-		AllowDownwardAPIHugePages:       true,
-		AllowInvalidPodDeletionCost:     true,
-		AllowWindowsHostProcessField:    true,
-		AllowExpandedDNSConfig:          true,
-		AllowIndivisibleHugePagesValues: true,
+	// HandlerMap contains admission webhook handlers
+	HandlerMap = map[string]admission.Handler{
+		"validate-daemonset": &DaemonSetCreateUpdateHandler{},
 	}
 )

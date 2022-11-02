@@ -26,6 +26,7 @@ import (
 	_ "time/tzdata" // for AdvancedCronJob Time Zone support
 
 	"github.com/sonic-net/sonic-k8s-operator/pkg/util/controllerfinder"
+	"github.com/sonic-net/sonic-k8s-operator/pkg/webhook"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,6 +72,7 @@ func main() {
 	var leaderElectionNamespace string
 	var namespace string
 	var syncPeriodStr string
+	var webhookEnabled bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&healthProbeAddr, "health-probe-addr", ":8000", "The address the healthz/readyz endpoint binds to.")
 	flag.BoolVar(&allowPrivileged, "allow-privileged", true, "If true, allow privileged containers. It will only work if api-server is also"+
@@ -83,7 +85,7 @@ func main() {
 	flag.BoolVar(&enablePprof, "enable-pprof", true, "Enable pprof for controller manager.")
 	flag.StringVar(&pprofAddr, "pprof-addr", ":8090", "The address the pprof binds to.")
 	flag.StringVar(&syncPeriodStr, "sync-period", "", "Determines the minimum frequency at which watched resources are reconciled.")
-
+	flag.BoolVar(&webhookEnabled, "admission-webhook-enabled", true, "Enable admission webhook manager.")
 	klog.InitFlags(nil)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -140,6 +142,14 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
+	}
+
+	if webhookEnabled {
+		setupLog.Info("setup admission webhook")
+		if err = webhook.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to setup webhook")
+			os.Exit(1)
+		}
 	}
 
 	if err := mgr.AddReadyzCheck("default", healthz.Ping); err != nil {

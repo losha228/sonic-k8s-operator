@@ -31,14 +31,14 @@ func GetSecretName() string {
 	if name := os.Getenv("SECRET_NAME"); len(name) > 0 {
 		return name
 	}
-	return "kruise-webhook-certs"
+	return "sonic-k8s-webhook-certs"
 }
 
 func GetServiceName() string {
 	if name := os.Getenv("SERVICE_NAME"); len(name) > 0 {
 		return name
 	}
-	return "kruise-webhook-service"
+	return "sonic-k8s-webhook-service"
 }
 
 func GetPort() int {
@@ -57,7 +57,7 @@ func GetCertDir() string {
 	if p := os.Getenv("WEBHOOK_CERT_DIR"); len(p) > 0 {
 		return p
 	}
-	return "/tmp/kruise-webhook-certs"
+	return "/tmp/sonic-k8s-webhook-certs"
 }
 
 func GetCertWriter() string {
