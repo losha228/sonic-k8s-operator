@@ -30,7 +30,7 @@ var (
 	HandlerMap = map[string]admission.Handler{}
 )
 
-func AddHandlers(m map[string]admission.Handler) {
+func RegisterWebhookHandlers(m map[string]admission.Handler) {
 	for path, handler := range m {
 		if len(path) == 0 {
 			klog.Warningf("Skip handler with empty path.")
@@ -56,6 +56,7 @@ func SetupWithManager(mgr manager.Manager) error {
 	server.CertDir = webhookutil.GetCertDir()
 	server.KeyName = webhookutil.GetKeyName()
 	server.CertName = webhookutil.GetCertName()
+	klog.V(3).Infof("Start reistering webhook handler")
 	for path, handler := range HandlerMap {
 		server.Register(path, &webhook.Admission{Handler: handler})
 		klog.V(3).Infof("Registered webhook handler %s", path)

@@ -18,6 +18,7 @@ package validating
 
 import (
 	webhookserver "github.com/sonic-net/sonic-k8s-operator/pkg/webhook"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -29,6 +30,6 @@ var (
 )
 
 func init() {
-	// register daemonset validate webhooks
+	klog.V(3).Infof("Registered daemonset validation webhook handler")
 	webhookserver.RegisterWebhookHandlers(HandlerMap)
 }
