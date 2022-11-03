@@ -30,6 +30,25 @@ var (
 	HandlerMap = map[string]admission.Handler{}
 )
 
+func AddHandlers(m map[string]admission.Handler) {
+	for path, handler := range m {
+		if len(path) == 0 {
+			klog.Warningf("Skip handler with empty path.")
+			continue
+		}
+		// prepend / if not exist
+		if path[0] != '/' {
+			path = "/" + path
+		}
+		_, found := HandlerMap[path]
+		if found {
+			klog.Warningf("Conflicting webhook builder path %v in handler map", path)
+		} else {
+			HandlerMap[path] = handler
+		}
+	}
+}
+
 func SetupWithManager(mgr manager.Manager) error {
 	server := mgr.GetWebhookServer()
 	server.Host = "0.0.0.0"
