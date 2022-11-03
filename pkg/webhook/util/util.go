@@ -60,6 +60,21 @@ func GetCertDir() string {
 	return "/tmp/sonic-k8s-webhook-certs"
 }
 
+func GetCertName() string {
+	if p := os.Getenv("WEBHOOK_CERT_NAME"); len(p) > 0 {
+		return p
+	}
+
+	return "tls.crt"
+}
+
+func GetKeyName() string {
+	if p := os.Getenv("WEBHOOK_KEY_NAME"); len(p) > 0 {
+		return p
+	}
+	return "tls.key"
+}
+
 func GetCertWriter() string {
 	return os.Getenv("WEBHOOK_CERT_WRITER")
 }

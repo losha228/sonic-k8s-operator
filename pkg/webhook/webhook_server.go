@@ -35,6 +35,8 @@ func SetupWithManager(mgr manager.Manager) error {
 	server.Host = "0.0.0.0"
 	server.Port = webhookutil.GetPort()
 	server.CertDir = webhookutil.GetCertDir()
+	server.KeyName = webhookutil.GetKeyName()
+	server.CertName = webhookutil.GetCertName()
 	for path, handler := range HandlerMap {
 		server.Register(path, &webhook.Admission{Handler: handler})
 		klog.V(3).Infof("Registered webhook handler %s", path)
