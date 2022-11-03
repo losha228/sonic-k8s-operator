@@ -217,6 +217,16 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods/ephemeralcontainers
   verbs:
   - get
