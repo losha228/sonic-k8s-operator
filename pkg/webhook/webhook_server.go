@@ -56,10 +56,10 @@ func SetupWithManager(mgr manager.Manager) error {
 	server.CertDir = webhookutil.GetCertDir()
 	server.KeyName = webhookutil.GetKeyName()
 	server.CertName = webhookutil.GetCertName()
-	klog.V(3).Infof("Start reistering webhook handler")
+	klog.Infof("Start reistering webhook handler")
 	for path, handler := range HandlerMap {
 		server.Register(path, &webhook.Admission{Handler: handler})
-		klog.V(3).Infof("Registered webhook handler %s", path)
+		klog.Infof("Registered webhook handler %s", path)
 	}
 
 	return nil

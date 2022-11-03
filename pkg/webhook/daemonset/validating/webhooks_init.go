@@ -30,6 +30,6 @@ var (
 )
 
 func init() {
-	klog.V(3).Infof("Registered daemonset validation webhook handler")
+	klog.Infof("Registered daemonset validation webhook handler")
 	webhookserver.RegisterWebhookHandlers(HandlerMap)
 }

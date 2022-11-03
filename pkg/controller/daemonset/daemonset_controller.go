@@ -118,11 +118,6 @@ const (
 // Add creates a new DaemonSet Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	/*
-		if !utildiscovery.DiscoverGVK(controllerKind) {
-			return nil
-		}
-	*/
 	r, err := newReconciler(mgr)
 	if err != nil {
 		return err
@@ -249,8 +244,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
-
-	// TODO: Do we need to watch ControllerRevision?
 
 	klog.V(4).Info("finished to add daemonset-controller")
 	return nil
