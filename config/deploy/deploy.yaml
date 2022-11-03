@@ -347,6 +347,7 @@ spec:
             - --leader-election-namespace=sonic-k8s-system
             - --v=4
             - --sync-period=0
+            - --admission-webhook-enabled=false
           command:
             - /manager
           image: localhost:5000/sonic-net/sonic-k8s-manager:test
@@ -363,6 +364,12 @@ spec:
               value: "9876"
             - name: WEBHOOK_CONFIGURATION_FAILURE_POLICY_PODS
               value: Ignore
+            - name: WEBHOOK_CERT_DIR
+              value: "/tmp"
+            - name: "WEBHOOK_CERT_NAME"
+              value: "cert.pem"
+            - name: "WEBHOOK_KEY_NAME"
+              value: "key.pem"
           ports:
             - containerPort: 9876
               name: webhook-server
@@ -384,7 +391,15 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /tmp
+              readOnly: true
       hostNetwork: false
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: webhook-certs
       terminationGracePeriodSeconds: 10
       serviceAccountName: sonic-k8s-manager
       affinity:

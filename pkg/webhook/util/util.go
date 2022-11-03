@@ -74,7 +74,3 @@ func GetKeyName() string {
 	}
 	return "tls.key"
 }
-
-func GetCertWriter() string {
-	return os.Getenv("WEBHOOK_CERT_WRITER")
-}
