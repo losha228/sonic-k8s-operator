@@ -85,7 +85,7 @@ func main() {
 	flag.BoolVar(&enablePprof, "enable-pprof", true, "Enable pprof for controller manager.")
 	flag.StringVar(&pprofAddr, "pprof-addr", ":8090", "The address the pprof binds to.")
 	flag.StringVar(&syncPeriodStr, "sync-period", "", "Determines the minimum frequency at which watched resources are reconciled.")
-	flag.BoolVar(&webhookEnabled, "admission-webhook-enabled", true, "Enable admission webhook manager.")
+	flag.BoolVar(&webhookEnabled, "admission-webhook-enabled", false, "Enable admission webhook manager.")
 	klog.InitFlags(nil)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
