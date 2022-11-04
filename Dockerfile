@@ -1,5 +1,5 @@
-# Build the manager and daemon binaries
-FROM golang:1.18 as builder
+# Build the manager binaries
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.18 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -15,12 +15,12 @@ COPY vendor/ vendor/
 # Build
 RUN CGO_ENABLED=0 GO111MODULE=on go build -mod=vendor -a -o manager main.go
 
-# Use Ubuntu 20.04 LTS as base image to package the binaries
-FROM ubuntu:focal
-# This is required by daemon connnecting with CRI
-RUN ln -s /usr/bin/* /usr/sbin/ && apt-get update -y \
-  && apt-get install --no-install-recommends -y ca-certificates \
-  && apt-get clean && rm -rf /var/log/*log /var/lib/apt/lists/* /var/log/apt/* /var/lib/dpkg/*-old /var/cache/debconf/*-old
+# Use mariner 2.0 as base image to package the binaries
+FROM mcr.microsoft.com/cbl-mariner/base/core:2.0
+# This is required by connection
+RUN ln -s /usr/bin/* /usr/sbin/ && tdnf update -y \
+  && tdnf install -y ca-certificates \
+  && rm -rf /var/log/*log
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
