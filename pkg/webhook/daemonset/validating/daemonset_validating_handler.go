@@ -21,9 +21,9 @@ import (
 	"net/http"
 	"strings"
 
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/apis/apps"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
