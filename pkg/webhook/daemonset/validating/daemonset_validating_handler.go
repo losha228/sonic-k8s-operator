@@ -19,6 +19,7 @@ package validating
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/klog/v2"
@@ -37,22 +38,26 @@ type DaemonSetCreateUpdateHandler struct {
 	Decoder *admission.Decoder
 }
 
-func (h *DaemonSetCreateUpdateHandler) validatingDaemonSet(ctx context.Context, obj *apps.DaemonSet) (bool, string, error) {
+func (h *DaemonSetCreateUpdateHandler) validatingDaemonSet(ctx context.Context, ds *apps.DaemonSet) (bool, string, error) {
 	// we only validate ds in sonic namespace
-	if obj.Namespace == ValidateDaemonSetNamespace {
+	klog.Infof("Validate ds %s/%s", ds.Namespace, ds.Name)
+	if strings.EqualFold(ds.Namespace, ValidateDaemonSetNamespace) {
 		fldPath := field.NewPath("spec")
-		allErrs := validateDaemonSetUpdateStrategy(&obj.Spec.UpdateStrategy, fldPath.Child("updateStrategy"))
+		allErrs := validateDaemonSetUpdateStrategy(ds, &ds.Spec.UpdateStrategy, fldPath.Child("updateStrategy"))
 		if len(allErrs) != 0 {
 			return false, "", allErrs.ToAggregate()
 		}
+	} else {
+		klog.Infof("Ignore ds %s/%s as it is not in %v namespace.", ds.Namespace, ds.Name, ValidateDaemonSetNamespace)
 	}
 	return true, "Allowed to be admitted", nil
 }
 
-func validateDaemonSetUpdateStrategy(strategy *apps.DaemonSetUpdateStrategy, fldPath *field.Path) field.ErrorList {
+func validateDaemonSetUpdateStrategy(ds *apps.DaemonSet, strategy *apps.DaemonSetUpdateStrategy, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	klog.Infof("Validate ds %s/%s update strategy %v", ds.Namespace, ds.Name, strategy.Type)
 	if strategy.Type != apps.OnDeleteDaemonSetStrategyType {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("rollingUpdate"), strategy.Type, "Only OnDelete is supported!"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("type"), strategy.Type, "Only OnDelete is supported!"))
 		return allErrs
 	}
 
