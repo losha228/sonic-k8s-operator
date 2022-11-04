@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strings"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/klog/v2"
@@ -68,6 +69,11 @@ var _ admission.Handler = &DaemonSetCreateUpdateHandler{}
 
 // Handle handles admission requests.
 func (h *DaemonSetCreateUpdateHandler) Handle(ctx context.Context, req admission.Request) admission.Response {
+
+	if req.AdmissionRequest.Operation != admissionv1.Create && req.AdmissionRequest.Operation != admissionv1.Update {
+		return admission.ValidationResponse(true, "")
+	}
+
 	obj := &apps.DaemonSet{}
 
 	err := h.Decoder.Decode(req, obj)
