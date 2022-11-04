@@ -17,6 +17,6 @@ webhooks:
         apiGroups: ["apps", ""]
         apiVersions: ["*"]
         resources: ["daemonsets"]
-    sideEffects: NoneOnDryRun
+    sideEffects: None
     timeoutSeconds: 30
     admissionReviewVersions: ["v1"]
