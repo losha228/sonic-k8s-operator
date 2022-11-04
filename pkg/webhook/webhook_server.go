@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	dsvalidating "github.com/sonic-net/sonic-k8s-operator/pkg/webhook/daemonset/validating"
 	webhookutil "github.com/sonic-net/sonic-k8s-operator/pkg/webhook/util"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -29,6 +30,11 @@ var (
 	// HandlerMap contains all admission webhook handlers.
 	HandlerMap = map[string]admission.Handler{}
 )
+
+func init() {
+	klog.Infof("Register daemonset validation webhook handler")
+	RegisterWebhookHandlers(dsvalidating.HandlerMap)
+}
 
 func RegisterWebhookHandlers(m map[string]admission.Handler) {
 	for path, handler := range m {

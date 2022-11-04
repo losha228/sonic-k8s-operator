@@ -17,8 +17,6 @@ limitations under the License.
 package validating
 
 import (
-	webhookserver "github.com/sonic-net/sonic-k8s-operator/pkg/webhook"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -28,8 +26,3 @@ var (
 		"validate-daemonset": &DaemonSetCreateUpdateHandler{},
 	}
 )
-
-func init() {
-	klog.Infof("Registered daemonset validation webhook handler")
-	webhookserver.RegisterWebhookHandlers(HandlerMap)
-}
