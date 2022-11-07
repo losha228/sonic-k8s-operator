@@ -415,17 +415,23 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 		return err
 	}
 
+	// refresh ds after rollback
+	ds, err = dsc.dsLister.DaemonSets(request.Namespace).Get(request.Name)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(4).Infof("DaemonSet has been deleted %s", dsKey)
+			dsc.expectations.DeleteExpectations(dsKey)
+			return nil
+		}
+		return fmt.Errorf("unable to retrieve DaemonSet %s from store: %v", dsKey, err)
+	}
+
 	if isDaemonSetPaused(ds) {
 		klog.Infof("Daemonset %s/%s is paused, skip...", ds.Namespace, ds.Name)
 		return nil
 	}
 
 	klog.Infof("Get ds hash %v for %s/%s", hash, ds.Namespace, ds.Name)
-	err = dsc.manage(ds, nodeList, hash)
-	if err != nil {
-		return err
-	}
-
 	klog.Infof("Start rolling update for %s/%s", ds.Namespace, ds.Name)
 	err = dsc.rollingUpdate(ds, nodeList, hash)
 	if err != nil {
@@ -494,47 +500,6 @@ func NewPod(ds *apps.DaemonSet, nodeName string) *corev1.Pod {
 
 	newPodForDSCache.Store(ds.UID, &newPodForDS{generation: ds.Generation, pod: newPod})
 	return newPod
-}
-
-// manage manages the scheduling and running of Pods of ds on nodes.
-// After figuring out which nodes should run a Pod of ds but not yet running one and
-// which nodes should not run a Pod of ds but currently running one, it calls function
-// syncNodes with a list of pods to remove and a list of nodes to run a Pod of ds.
-func (dsc *ReconcileDaemonSet) manage(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string) error {
-	// Find out the pods which are created for the nodes by DaemonSets.
-	nodeToDaemonPods, err := dsc.getNodesToDaemonPods(ds)
-
-	if err != nil {
-		return fmt.Errorf("couldn't get node to daemon pod mapping for DaemonSet %s: %v", ds.Name, err)
-	}
-
-	// For each node, if the node is running the daemon pod but isn't supposed to, kill the daemon
-	// pod. If the node is supposed to run the daemon pod, but isn't, create the daemon pod on the node.
-	var nodesNeedingDaemonPods, podsToDelete []string
-	var nodesDesireScheduled, newPodCount int
-	for _, node := range nodeList {
-		nodesNeedingDaemonPodsOnNode, podsToDeleteOnNode := dsc.podsShouldBeOnNode(node, nodeToDaemonPods, ds, hash)
-
-		nodesNeedingDaemonPods = append(nodesNeedingDaemonPods, nodesNeedingDaemonPodsOnNode...)
-		podsToDelete = append(podsToDelete, podsToDeleteOnNode...)
-
-		if shouldRun, _ := nodeShouldRunDaemonPod(node, ds); shouldRun {
-			nodesDesireScheduled++
-		}
-		if newPod, _, ok := findUpdatedPodsOnNode(ds, nodeToDaemonPods[node.Name], hash); ok && newPod != nil {
-			newPodCount++
-		}
-	}
-
-	// Remove unscheduled pods assigned to not existing nodes when daemonset pods are scheduled by scheduler.
-	// If node doesn't exist then pods are never scheduled and can't be deleted by PodGCController.
-	// podsToDelete = append(podsToDelete, nodeToDaemonPods["worker-2"][0])
-	podsToDelete = append(podsToDelete, getUnscheduledPodsWithoutNode(nodeList, nodeToDaemonPods)...)
-	klog.Infof("manage() , podsToDelete %v", podsToDelete)
-	klog.Infof("manage() , go to  syncNodes() ")
-
-	// Label new pods using the hash label value of the current history when creating them
-	return dsc.syncNodes(ds, podsToDelete, nodesNeedingDaemonPods, hash)
 }
 
 // syncNodes deletes given pods and creates new daemon set pods on the given nodes
