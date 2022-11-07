@@ -91,8 +91,20 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 		newPod := pod.DeepCopy()
 		// Note: can't rollback the whole spec by newPod.Spec = ds.Spec.Template.Spec
 		// Patching Pod may not change fields other than spec.containers[*].image, spec.initContainers[*].image, spec.activeDeadlineSeconds or spec.tolerations (only additions to existing tolerations).
-		newPod.Spec.Containers = ds.Spec.Template.Spec.Containers
-		newPod.Spec.InitContainers = ds.Spec.Template.Spec.InitContainers
+		if len(newPod.Spec.Containers) != len(ds.Spec.Template.Spec.Containers) || len(newPod.Spec.InitContainers) != len(ds.Spec.Template.Spec.InitContainers) {
+			return fmt.Errorf("Can not rollback due to containr count mismach %s/%s", pod.Namespace, pod.Name)
+		}
+
+		// TO-DO: need to do more check if there is any other change
+
+		for i := range ds.Spec.Template.Spec.Containers {
+			newPod.Spec.Containers[i].Image = ds.Spec.Template.Spec.Containers[i].Image
+		}
+
+		for i := range ds.Spec.Template.Spec.InitContainers {
+			newPod.Spec.InitContainers[i].Image = ds.Spec.Template.Spec.InitContainers[i].Image
+		}
+
 		// clean precheck/postcheck hooks
 		newPod.Annotations["RollbackFrom"] = pod.Spec.Containers[0].Image
 		newPod.Annotations["RollbackReason"] = pod.Annotations[string(appspub.DaemonSetPostcheckHookProbeDetailsKey)]
