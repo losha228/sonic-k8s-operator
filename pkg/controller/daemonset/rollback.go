@@ -68,7 +68,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 
 	for _, pod := range podsToRollback {
 		ctx := context.TODO()
-		err := dsc.rollbackToTemplate(ctx, oldDs, pod, oldHash)
+		err := dsc.rollbackToTemplate(ctx, oldDs, pod, hash)
 		if err == nil {
 			dsc.emitRollbackNormalEvent(ds, fmt.Sprintf("Rolled back ds %v/%v pod %v to revision %d", ds.Namespace, ds.Name, pod.Name, rbVersion.Revision))
 		} else {
@@ -97,8 +97,8 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 		}
 
 		// TO-DO: need to do more check if there is any other change
-		generation, err := GetTemplateGeneration(ds)
-		newPod.Labels[extensions.DaemonSetTemplateGenerationKey] = fmt.Sprint(generation)
+		// generation, err := GetTemplateGeneration(ds)
+		newPod.Labels[extensions.DaemonSetTemplateGenerationKey] = ds.Annotations[apps.DeprecatedTemplateGeneration]
 		newPod.Labels[apps.DefaultDaemonSetUniqueLabelKey] = hash
 
 		for i := range ds.Spec.Template.Spec.Containers {
