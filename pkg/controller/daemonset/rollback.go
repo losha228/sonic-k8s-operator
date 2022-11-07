@@ -71,6 +71,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		if err == nil {
 			dsc.emitRollbackNormalEvent(ds, fmt.Sprintf("Rolled back ds %v/%v pod %v to revision %d", ds.Namespace, ds.Name, pod.Name, rbVersion.Revision))
 		} else {
+			klog.V(3).Infof("Failed to rollback pod for DaemonSet %s/%s", ds.Namespace, ds.Name, err)
 			return err
 		}
 	}
@@ -85,7 +86,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 // cleans up the rollback spec so subsequent requeues of the deployment won't end up in here.
 func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.DaemonSet, pod *corev1.Pod) error {
 	if !EqualIgnoreHash(&ds.Spec.Template.Spec, &pod.Spec) {
-		klog.V(4).Infof("Rolling back ds %v/%v to template spec %+v", ds.Namespace, ds.Name, ds.Spec.Template.Spec)
+		klog.V(4).Infof("Rolling back ds %v/%v pod %v to template spec %+v", ds.Namespace, ds.Name, pod.Name, ds.Spec.Template.Spec)
 		// update pod spec
 		newPod := pod.DeepCopy()
 		newPod.Spec = ds.Spec.Template.Spec
