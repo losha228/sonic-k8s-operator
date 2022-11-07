@@ -383,8 +383,9 @@ func (dsc *ReconcileDaemonSet) getRollbackDsVersion(ds *apps.DaemonSet) (*apps.C
 	klog.Infof("ds %s/%s , total revision %v, max revision: %v", ds.Namespace, ds.Name, len(histories), max)
 
 	// make sure the latest version equals the current version
-	if historyMap[max].Generation != ds.Generation {
-		return nil, fmt.Errorf("Max history is mismatch with current ds %s/%s, max Generation: %v, current Generation: %v", ds.Namespace, ds.Name, historyMap[max].Generation, ds.Generation)
+	matched, err := Match(ds, historyMap[max])
+	if err != nil || !matched {
+		return nil, fmt.Errorf("Max history is mismatch with current ds %s/%s", ds.Namespace, ds.Name)
 	}
 
 	keys := make([]int64, 0, len(historyMap))
