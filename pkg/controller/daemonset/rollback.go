@@ -49,7 +49,8 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		klog.V(3).Infof("DaemonSet %s/%s, no pod for rollback.", ds.Namespace, ds.Name)
 		return nil
 	}
-
+	// pause ds update
+	dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
 	klog.V(3).Infof("DaemonSet %s/%s, found %v pod to rollback", ds.Namespace, ds.Name, len(podsToRollback))
 
 	// get the rollback version
