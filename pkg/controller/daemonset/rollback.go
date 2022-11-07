@@ -53,7 +53,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 
 	nodeToDaemonPods, err := dsc.getNodesToDaemonPods(ds)
 	if err != nil {
-		return fmt.Errorf("couldn't get node to daemon pod mapping for daemon set %q: %v", ds.Name, err)
+		return fmt.Errorf("Couldn't get node to daemon pod mapping for daemon set %q: %v", ds.Name, err)
 	}
 
 	// get the rollback version
@@ -79,7 +79,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	podsToRollback, err := dsc.filterDaemonPodsNodeToRollback(ds, nodeList, hash, nodeToDaemonPods)
 
 	if err != nil {
-		return fmt.Errorf("failed to filterDaemonPodsToUpdate: %v", err)
+		return fmt.Errorf("Failed to filterDaemonPodsToUpdate: %v", err)
 	}
 	klog.V(3).Infof("DaemonSet %s/%s, filter rollback pods for %v nodes", ds.Namespace, ds.Name, len(nodeList))
 	if len(podsToRollback) == 0 {
@@ -128,8 +128,6 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 			return fmt.Errorf("Can not rollback due to containr count mismach %s/%s", pod.Namespace, pod.Name)
 		}
 
-		// TO-DO: need to do more check if there is any other change
-		// generation, err := GetTemplateGeneration(ds)
 		newPod.Labels[extensions.DaemonSetTemplateGenerationKey] = podGeneration
 		newPod.Labels[apps.DefaultDaemonSetUniqueLabelKey] = hash
 
@@ -184,19 +182,21 @@ func (dsc *ReconcileDaemonSet) CanRollback(ds *apps.DaemonSet, version *apps.Con
 		return fmt.Errorf("Containers count change, rollback is not doable")
 	}
 
+	newDs := ds.DeepCopy()
+
 	// update new ds image by old version
-	for i, c := range ds.Spec.Template.Spec.Containers {
+	for i, c := range newDs.Spec.Template.Spec.Containers {
 		c.Image = oldDs.Spec.Template.Spec.Containers[i].Image
 	}
 
-	for i, c := range ds.Spec.Template.Spec.InitContainers {
+	for i, c := range newDs.Spec.Template.Spec.InitContainers {
 		c.Image = oldDs.Spec.Template.Spec.InitContainers[i].Image
 	}
 
 	// now compare the pod spec to see if there is change other than container image
-	t1Copy := ds.Spec.Template.Spec.DeepCopy()
-	t2Copy := oldDs.Spec.Template.Spec.DeepCopy()
-	ok := apiequality.Semantic.DeepEqual(t1Copy, t2Copy)
+	newPodSpecCopy := newDs.Spec.Template.Spec.DeepCopy()
+	oldPodSpecCopy := oldDs.Spec.Template.Spec.DeepCopy()
+	ok := apiequality.Semantic.DeepEqual(newPodSpecCopy, oldPodSpecCopy)
 	if !ok {
 		return fmt.Errorf("There are changes other than container image, rollback is not supported.")
 	}
