@@ -89,8 +89,10 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 		klog.V(4).Infof("Rolling back ds %v/%v pod %v to template spec %+v", ds.Namespace, ds.Name, pod.Name, ds.Spec.Template.Spec)
 		// update pod spec
 		newPod := pod.DeepCopy()
-		newPod.Spec = ds.Spec.Template.Spec
-		newPod.Spec.Tolerations = pod.Spec.Tolerations
+		// Note: can't rollback the whole spec by newPod.Spec = ds.Spec.Template.Spec
+		// Patching Pod may not change fields other than spec.containers[*].image, spec.initContainers[*].image, spec.activeDeadlineSeconds or spec.tolerations (only additions to existing tolerations).
+		newPod.Spec.Containers = pod.Spec.Containers
+		newPod.Spec.InitContainers = pod.Spec.Containers
 		// clean precheck/postcheck hooks
 		newPod.Annotations["RollbackFrom"] = pod.Spec.Containers[0].Image
 		newPod.Annotations["RollbackReason"] = pod.Annotations[string(appspub.DaemonSetPostcheckHookProbeDetailsKey)]
