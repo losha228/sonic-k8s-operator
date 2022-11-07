@@ -404,6 +404,7 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	klog.Infof("Check rollback for %s/%s", ds.Namespace, ds.Name)
 	dsc.rollback(ds, nodeList, hash)
 	if err != nil {
+		klog.Infof("Rollback fail for %s/%s", ds.Namespace, ds.Name)
 		return err
 	}
 
