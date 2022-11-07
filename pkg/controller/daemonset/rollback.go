@@ -59,6 +59,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		return fmt.Errorf("Failed to get rollback version for %s/%s: %v", ds.Namespace, ds.Name, err)
 	}
 
+	hash := rbVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
 	oldDs, err := dsc.applyDaemonSetHistory(ds, rbVersion)
 	if err != nil {
 		klog.V(3).Infof("Failed to get old version for DaemonSet %s/%s", ds.Namespace, ds.Name)
@@ -67,7 +68,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 
 	for _, pod := range podsToRollback {
 		ctx := context.TODO()
-		err := dsc.rollbackToTemplate(ctx, oldDs, pod)
+		err := dsc.rollbackToTemplate(ctx, oldDs, pod, hash)
 		if err == nil {
 			dsc.emitRollbackNormalEvent(ds, fmt.Sprintf("Rolled back ds %v/%v pod %v to revision %d", ds.Namespace, ds.Name, pod.Name, rbVersion.Revision))
 		} else {
@@ -84,7 +85,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 // rollbackToTemplate compares the templates of the provided deployment and replica set and
 // updates the deployment with the replica set template in case they are different. It also
 // cleans up the rollback spec so subsequent requeues of the deployment won't end up in here.
-func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.DaemonSet, pod *corev1.Pod) error {
+func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.DaemonSet, pod *corev1.Pod, hash string) error {
 	if !EqualIgnoreHash(&ds.Spec.Template.Spec, &pod.Spec) {
 		klog.V(4).Infof("Rolling back ds %v/%v pod %v to template spec %+v", ds.Namespace, ds.Name, pod.Name, ds.Spec.Template.Spec)
 		// update pod spec
@@ -96,6 +97,9 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 		}
 
 		// TO-DO: need to do more check if there is any other change
+		generation, err := GetTemplateGeneration(ds)
+		newPod.Labels[extensions.DaemonSetTemplateGenerationKey] = fmt.Sprint(generation)
+		newPod.Labels[apps.DefaultDaemonSetUniqueLabelKey] = hash
 
 		for i := range ds.Spec.Template.Spec.Containers {
 			newPod.Spec.Containers[i].Image = ds.Spec.Template.Spec.Containers[i].Image
