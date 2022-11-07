@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -491,53 +490,6 @@ func NewPod(ds *apps.DaemonSet, nodeName string) *corev1.Pod {
 
 	newPodForDSCache.Store(ds.UID, &newPodForDS{generation: ds.Generation, pod: newPod})
 	return newPod
-}
-
-// syncNodes deletes given pods and creates new daemon set pods on the given nodes
-// returns slice with erros if any
-func (dsc *ReconcileDaemonSet) syncNodes(ds *apps.DaemonSet, podsToDelete, nodesNeedingDaemonPods []string, hash string) error {
-	klog.Infof("syncNodes() ")
-
-	podsToDelete, err := dsc.syncWithPreDeleteHooks(ds, podsToDelete)
-	if err != nil {
-		return err
-	}
-
-	dsKey := keyFunc(ds)
-	createDiff := len(nodesNeedingDaemonPods)
-	deleteDiff := len(podsToDelete)
-
-	// error channel to communicate back failures.  make the buffer big enough to avoid any blocking
-	errCh := make(chan error, createDiff+deleteDiff)
-
-	klog.Infof("Pods to delete for DaemonSet %s: %+v, deleting %d", ds.Name, podsToDelete, deleteDiff)
-	deleteWait := sync.WaitGroup{}
-	deleteWait.Add(deleteDiff)
-	for i := 0; i < deleteDiff; i++ {
-		go func(ix int) {
-			defer deleteWait.Done()
-			pod := podsToDelete[ix]
-			klog.V(2).Infof("Try to delete pod %v", pod)
-			if err := dsc.podControl.DeletePod(ds.Namespace, podsToDelete[ix], ds); err != nil {
-				dsc.expectations.DeletionObserved(dsKey)
-				if !errors.IsNotFound(err) {
-					klog.V(2).Infof("Failed deletion, decremented expectations for set %q/%q", ds.Namespace, ds.Name)
-					errCh <- err
-					utilruntime.HandleError(err)
-				}
-			} else {
-				klog.V(2).Infof("pod %v is deleted", pod)
-			}
-		}(i)
-	}
-	deleteWait.Wait()
-	// collect errors if any for proper reporting/retry logic in the controller
-	var errors []error
-	close(errCh)
-	for err := range errCh {
-		errors = append(errors, err)
-	}
-	return utilerrors.NewAggregate(errors)
 }
 
 func (dsc *ReconcileDaemonSet) syncWithPreDeleteHooks(ds *apps.DaemonSet, podsToDelete []string) (podsCanDelete []string, err error) {
