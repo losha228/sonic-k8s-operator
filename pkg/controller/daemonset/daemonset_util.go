@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	clientset "k8s.io/client-go/kubernetes"
 
+	"github.com/modern-go/concurrent"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -46,8 +47,10 @@ import (
 
 var (
 	// newPodForDSCache is a cache for NewPod, it is map[ds.UID]*newPodForDS
-	newPodForDSCache sync.Map
-	newPodForDSLock  sync.Mutex
+	newPodForDSCache     sync.Map
+	newPodForDSLock      sync.Mutex
+	newForDSLock         sync.Mutex
+	rollbackForDSLockMap = concurrent.NewMap()
 )
 
 type newPodForDS struct {
@@ -55,6 +58,13 @@ type newPodForDS struct {
 	pod        *corev1.Pod
 }
 
+func checkOrUpdateRollbackLock(dsKey string) {
+	newForDSLock.Lock()
+	defer newForDSLock.Unlock()
+	if _, found := rollbackForDSLockMap.Load(dsKey); !found {
+		rollbackForDSLockMap.Store(dsKey, &sync.Mutex{})
+	}
+}
 func loadNewPodForDS(ds *apps.DaemonSet) *corev1.Pod {
 	if val, ok := newPodForDSCache.Load(ds.UID); ok {
 		newPodCache := val.(*newPodForDS)

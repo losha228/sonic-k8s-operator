@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	appspub "github.com/sonic-net/sonic-k8s-operator/apis/apps/pub"
 	apps "k8s.io/api/apps/v1"
@@ -33,6 +34,11 @@ import (
 
 // reconsile for failed pod for rollback
 func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string) error {
+	// we only allow one go routin to do rollback for one ds
+	lockObj, _ := rollbackForDSLockMap.Load(fmt.Sprintf("%s/%s", ds.Namespace, ds.Name))
+	lock := lockObj.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
 	nodeToDaemonPods, err := dsc.getNodesToDaemonPods(ds)
 	if err != nil {
 		return fmt.Errorf("couldn't get node to daemon pod mapping for daemon set %q: %v", ds.Name, err)

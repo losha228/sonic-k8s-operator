@@ -355,6 +355,7 @@ func (dsc *ReconcileDaemonSet) getDaemonPods(ds *apps.DaemonSet) ([]*corev1.Pod,
 func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	dsKey := request.NamespacedName.String()
 	klog.Infof("syncDaemonSet %v", dsKey)
+
 	ds, err := dsc.dsLister.DaemonSets(request.Namespace).Get(request.Name)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -389,6 +390,8 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 		return fmt.Errorf("couldn't get list of nodes when syncing DaemonSet %#v: %v", ds, err)
 	}
 	klog.Infof("syncDaemonSet , get node list %v", len(nodeList))
+
+	checkOrUpdateRollbackLock(fmt.Sprintf("%s/%s", ds.Namespace, ds.Name))
 
 	/*
 		curVersion, err := dsc.getLastestDsVersion(ds)
