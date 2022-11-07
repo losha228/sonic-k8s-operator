@@ -90,6 +90,7 @@ func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.
 		// update pod spec
 		newPod := pod.DeepCopy()
 		newPod.Spec = ds.Spec.Template.Spec
+		newPod.Spec.Tolerations = pod.Spec.Tolerations
 		// clean precheck/postcheck hooks
 		newPod.Annotations["RollbackFrom"] = pod.Spec.Containers[0].Image
 		newPod.Annotations["RollbackReason"] = pod.Annotations[string(appspub.DaemonSetPostcheckHookProbeDetailsKey)]
