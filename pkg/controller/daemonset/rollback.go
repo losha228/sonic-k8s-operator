@@ -68,10 +68,10 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	}
 
 	// there are more than 1 version of ds, need to check if rollback is doable
-	err = dsc.CanRollback(ds, rbVersion)
+	err = dsc.canRollback(ds, rbVersion)
 	if err != nil {
 		dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
-		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v", ds.Namespace, ds.Name, err)
+		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v, please disable it.", ds.Namespace, ds.Name, err)
 		return fmt.Errorf("Pause ds %s/%s because its pod can not rollback.", ds.Namespace, ds.Name)
 	}
 
@@ -169,7 +169,7 @@ func (dsc *ReconcileDaemonSet) emitRollbackNormalEvent(ds *apps.DaemonSet, messa
 	dsc.eventRecorder.Eventf(ds, v1.EventTypeNormal, "RollbackDone", message)
 }
 
-func (dsc *ReconcileDaemonSet) CanRollback(ds *apps.DaemonSet, version *apps.ControllerRevision) error {
+func (dsc *ReconcileDaemonSet) canRollback(ds *apps.DaemonSet, version *apps.ControllerRevision) error {
 	// compare pod spec
 	// Patching Pod may not change fields other than spec.containers[*].image, spec.initContainers[*].image, spec.activeDeadlineSeconds or spec.tolerations (only additions to existing tolerations).
 	// other field changes will not allow rollback
