@@ -55,7 +55,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	// get the rollback version
 	rbVersion, err := dsc.getRollbackDsVersion(ds)
 	if err != nil {
-		klog.V(3).Infof("Failed to get rollback version for DaemonSet %s/%s", ds.Namespace, ds.Name)
+		klog.V(3).Infof("Failed to get rollback version for DaemonSet %s/%s : %v", ds.Namespace, ds.Name, err)
 		return fmt.Errorf("Failed to get rollback version for %s/%s: %v", ds.Namespace, ds.Name, err)
 	}
 
