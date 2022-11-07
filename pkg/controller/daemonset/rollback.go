@@ -50,6 +50,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		return nil
 	}
 	// pause ds update
+	klog.V(3).Infof("Pause daemonSet %s/%s due to rollback is needed.", ds.Namespace, ds.Name)
 	dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
 	klog.V(3).Infof("DaemonSet %s/%s, found %v pod to rollback", ds.Namespace, ds.Name, len(podsToRollback))
 
