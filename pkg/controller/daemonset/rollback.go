@@ -71,7 +71,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		if err == nil {
 			dsc.emitRollbackNormalEvent(ds, fmt.Sprintf("Rolled back ds %v/%v pod %v to revision %d", ds.Namespace, ds.Name, pod.Name, rbVersion.Revision))
 		} else {
-			klog.V(3).Infof("Failed to rollback pod for DaemonSet %s/%s", ds.Namespace, ds.Name, err)
+			klog.V(3).Infof("Failed to rollback pod for DaemonSet %s/%s : %v", ds.Namespace, ds.Name, err)
 			return err
 		}
 	}
