@@ -215,6 +215,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				}
 			}
 
+			if newDS.Annotations[string(appspub.DaemonSetDeploymentPausedKey)] != oldDS.Annotations[string(appspub.DaemonSetDeploymentPausedKey)] {
+				return true
+			}
+
 			if !isPaused && oldDS.Spec.Template.Spec.Containers[0].Image == newDS.Spec.Template.Spec.Containers[0].Image {
 				klog.V(4).Infof("Updating DaemonSet %s/%s, no container change, skip", newDS.Namespace, newDS.Name)
 				return false
