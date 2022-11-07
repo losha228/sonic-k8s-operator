@@ -34,7 +34,7 @@ import (
 
 // reconsile for failed pod for rollback
 func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string) error {
-	// we only allow one go routin to do rollback for one ds
+	// we only allow one go routine to do rollback for one ds
 	lockObj, _ := rollbackForDSLockMap.Load(fmt.Sprintf("%s/%s", ds.Namespace, ds.Name))
 	lock := lockObj.(*sync.Mutex)
 	lock.Lock()
