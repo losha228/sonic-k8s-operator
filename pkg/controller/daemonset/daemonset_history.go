@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/sonic-net/sonic-k8s-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
@@ -29,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/klog/v2"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
@@ -349,6 +351,76 @@ func (dsc *ReconcileDaemonSet) getLastestDsVersion(ds *apps.DaemonSet) (*apps.Co
 	}
 
 	return cur, err
+}
+
+func (dsc *ReconcileDaemonSet) getRollbackDsVersion(ds *apps.DaemonSet) (*apps.ControllerRevision, error) {
+	selector, err := util.ValidatedLabelSelectorAsSelector(ds.Spec.Selector)
+	if err != nil {
+		return nil, err
+	}
+
+	// List all histories to include those that don't match the selector anymore
+	// but have a ControllerRef pointing to the controller.
+	histories, err := dsc.historyLister.List(selector)
+	if err != nil {
+		return nil, err
+	}
+	historyMap := make(map[int64]*apps.ControllerRevision, len(histories))
+	max := int64(0)
+
+	for i, history := range histories {
+		hash := ""
+		if _, ok := history.Labels[apps.DefaultDaemonSetUniqueLabelKey]; ok {
+			hash = history.Labels[apps.DefaultDaemonSetUniqueLabelKey]
+		}
+		klog.Infof("ds %s/%s history %v:  hash %v, revision: %v", ds.Namespace, ds.Name, i, hash, history.Revision)
+		historyMap[history.Revision] = history
+		if history.Revision > max {
+			max = history.Revision
+		}
+	}
+
+	klog.Infof("ds %s/%s , total revision %v, max revision: %v", ds.Namespace, ds.Name, len(histories), max)
+
+	// make sure the latest version equals the current version
+	if historyMap[max].Generation != ds.Generation {
+		return nil, fmt.Errorf("Max history is mismatch with current ds %s/%s", ds.Namespace, ds.Name)
+	}
+
+	keys := make([]int64, 0, len(historyMap))
+	for k := range historyMap {
+		keys = append(keys, k)
+	}
+
+	if len(keys) < 2 {
+		return nil, fmt.Errorf("No rollback found due to no update found for ds %s/%s", ds.Namespace, ds.Name)
+	}
+
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	// the last second is the rollback version
+	rollbackVersion := keys[len(keys)-2]
+	klog.Infof("ds %s/%s , total revision %v, max revision: %v, rollback version: %v", ds.Namespace, ds.Name, len(histories), max, rollbackVersion)
+	return historyMap[rollbackVersion], nil
+
+}
+
+// applyDaemonSetHistory returns a specific revision of DaemonSet by applying the given history to a copy of the given DaemonSet
+func (dsc *ReconcileDaemonSet) applyDaemonSetHistory(ds *apps.DaemonSet, history *apps.ControllerRevision) (*apps.DaemonSet, error) {
+	dsBytes, err := json.Marshal(ds)
+	if err != nil {
+		return nil, err
+	}
+	patched, err := strategicpatch.StrategicMergePatch(dsBytes, history.Data.Raw, ds)
+	if err != nil {
+		return nil, err
+	}
+	result := &apps.DaemonSet{}
+	err = json.Unmarshal(patched, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 type historiesByRevision []*apps.ControllerRevision

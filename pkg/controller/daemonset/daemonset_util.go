@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	intstrutil "k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	v1helper "k8s.io/component-helpers/scheduling/corev1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
@@ -470,4 +471,41 @@ func isPodPreDeleting(pod *corev1.Pod) bool {
 	}
 
 	return false
+}
+
+// SetFromDaemonSetTemplate sets the desired PodTemplateSpec from a daemonset template to the given daemonset.
+func SetFromDaemonSetTemplate(pod *corev1.Pod, template corev1.PodTemplateSpec) *corev1.Pod {
+	pod.Spec = template.Spec
+	// pod.Spec.Spec = template.Spec
+	/*
+		pod.Spec.ObjectMeta.Labels = labelsutil.CloneAndRemoveLabel(
+			ds.Spec.Template.ObjectMeta.Labels,
+			apps.DefaultDeploymentUniqueLabelKey)*/
+	return pod
+}
+
+func EqualIgnoreHash(template1, template2 *corev1.PodSpec) bool {
+	t1Copy := template1.DeepCopy()
+	t2Copy := template2.DeepCopy()
+	// Remove hash labels from template.Labels before comparing
+	//delete(t1Copy.Labels, apps.DefaultDeploymentUniqueLabelKey)
+	//delete(t2Copy.Labels, apps.DefaultDeploymentUniqueLabelKey)
+	return apiequality.Semantic.DeepEqual(t1Copy, t2Copy)
+}
+
+// CreateMergePatch return patch generated from original and new interfaces
+func CreateMergePatch(original, new interface{}) ([]byte, error) {
+	pvByte, err := json.Marshal(original)
+	if err != nil {
+		return nil, err
+	}
+	cloneByte, err := json.Marshal(new)
+	if err != nil {
+		return nil, err
+	}
+	patch, err := strategicpatch.CreateTwoWayMergePatch(pvByte, cloneByte, original)
+	if err != nil {
+		return nil, err
+	}
+	return patch, nil
 }
