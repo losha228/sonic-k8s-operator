@@ -401,7 +401,7 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	}
 
 	hash := curVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
-	klog.Infof("Check rollback %v for %s/%s", ds.Namespace, ds.Name)
+	klog.Infof("Check rollback for %s/%s", ds.Namespace, ds.Name)
 	dsc.rollback(ds, nodeList, hash)
 	if err != nil {
 		return err
