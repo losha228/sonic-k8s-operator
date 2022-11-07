@@ -72,6 +72,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	if err != nil {
 		dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
 		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v, please disable it.", ds.Namespace, ds.Name, err)
+		dsc.emitRollbackWarningEvent(ds, "RollbackNotSupport", fmt.Sprintf("%v", err))
 		return fmt.Errorf("Pause ds %s/%s because its pod can not rollback.", ds.Namespace, ds.Name)
 	}
 
@@ -111,8 +112,6 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		}
 	}
 
-	// dsc.emitRollbackWarningEvent(d, deploymentutil.RollbackRevisionNotFound, "Unable to find the revision to rollback to.")
-	// Gives up rollback
 	return err
 }
 
