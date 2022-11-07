@@ -50,6 +50,8 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		return nil
 	}
 
+	klog.V(3).Infof("DaemonSet %s/%s, found %v pod to rollback", ds.Namespace, ds.Name, len(podsToRollback))
+
 	// get the rollback version
 	rbVersion, err := dsc.getRollbackDsVersion(ds)
 	if err != nil {
@@ -173,6 +175,8 @@ func (dsc *ReconcileDaemonSet) filterDaemonPodsNodeToRollback(ds *apps.DaemonSet
 			if postCheck, found := newPod.Annotations[appspub.DaemonSetPostcheckHookKey]; found {
 				if strings.EqualFold(postCheck, string(appspub.DaemonSetHookStateFailed)) {
 					updatedFailed = append(updatedFailed, newPod)
+				} else {
+					klog.V(4).Infof("Ignore %s/%s, new pod %v due to no postcheck fail tag", ds.Namespace, ds.Name, newPod.Name)
 				}
 			}
 		}
