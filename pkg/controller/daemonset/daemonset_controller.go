@@ -22,7 +22,6 @@ import (
 	"flag"
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -46,7 +45,6 @@ import (
 	v1helper "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 	"k8s.io/klog/v2"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
 	daemonsetutil "k8s.io/kubernetes/pkg/controller/daemon/util"
@@ -354,7 +352,7 @@ func (dsc *ReconcileDaemonSet) getDaemonPods(ds *apps.DaemonSet) ([]*corev1.Pod,
 
 func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	dsKey := request.NamespacedName.String()
-	klog.Infof("syncDaemonSet %v", dsKey)
+	klog.Infof("Start sync DaemonSet %v", dsKey)
 
 	ds, err := dsc.dsLister.DaemonSets(request.Namespace).Get(request.Name)
 	if err != nil {
@@ -387,19 +385,12 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 
 	nodeList, err := dsc.nodeLister.List(labels.Everything())
 	if err != nil {
-		return fmt.Errorf("couldn't get list of nodes when syncing DaemonSet %#v: %v", ds, err)
+		return fmt.Errorf("Couldn't get list of nodes when syncing DaemonSet %#v: %v", ds, err)
 	}
-	klog.Infof("syncDaemonSet , get node list %v", len(nodeList))
+	klog.Infof("Found %v node for ds %s/%s", len(nodeList), ds.Namespace, ds.Name)
 
 	checkOrUpdateRollbackLock(fmt.Sprintf("%s/%s", ds.Namespace, ds.Name))
 
-	/*
-		curVersion, err := dsc.getLastestDsVersion(ds)
-		if err != nil || curVersion == nil {
-			klog.V(4).Infof("Failed to get deamonset version:  %s", err)
-			return nil
-		}
-	*/
 	curVersion, _ := dsc.getCurrentDsVersion(ds)
 	if curVersion == nil {
 		klog.V(4).Infof("Failed to get deamonset version for %s/%s, will try it later.", ds.Namespace, ds.Name)
@@ -540,7 +531,6 @@ func (dsc *ReconcileDaemonSet) syncNodes(ds *apps.DaemonSet, podsToDelete, nodes
 		}(i)
 	}
 	deleteWait.Wait()
-	klog.Infof("return ")
 	// collect errors if any for proper reporting/retry logic in the controller
 	var errors []error
 	close(errCh)
@@ -597,128 +587,6 @@ func (dsc *ReconcileDaemonSet) syncWithPreDeleteHooks(ds *apps.DaemonSet, podsTo
 	return
 }
 
-// podsShouldBeOnNode figures out the DaemonSet pods to be created and deleted on the given node:
-//   - nodesNeedingDaemonPods: the pods need to start on the node
-//   - podsToDelete: the Pods need to be deleted on the node
-//   - err: unexpected error
-func (dsc *ReconcileDaemonSet) podsShouldBeOnNode(
-	node *corev1.Node,
-	nodeToDaemonPods map[string][]*corev1.Pod,
-	ds *apps.DaemonSet,
-	hash string,
-) (nodesNeedingDaemonPods, podsToDelete []string) {
-
-	shouldRun, shouldContinueRunning := nodeShouldRunDaemonPod(node, ds)
-	daemonPods, exists := nodeToDaemonPods[node.Name]
-
-	switch {
-	case shouldRun && !exists:
-		// If daemon pod is supposed to be running on node, but isn't, create daemon pod.
-		nodesNeedingDaemonPods = append(nodesNeedingDaemonPods, node.Name)
-	case shouldContinueRunning:
-		// If a daemon pod failed, delete it
-		// If there's non-daemon pods left on this node, we will create it in the next sync loop
-		var daemonPodsRunning []*corev1.Pod
-		for _, pod := range daemonPods {
-			if pod.DeletionTimestamp != nil {
-				continue
-			}
-			if pod.Status.Phase == corev1.PodFailed {
-				// This is a critical place where DS is often fighting with kubelet that rejects pods.
-				// We need to avoid hot looping and backoff.
-				backoffKey := failedPodsBackoffKey(ds, node.Name)
-
-				now := dsc.failedPodsBackoff.Clock.Now()
-				inBackoff := dsc.failedPodsBackoff.IsInBackOffSinceUpdate(backoffKey, now)
-				if inBackoff {
-					delay := dsc.failedPodsBackoff.Get(backoffKey)
-					klog.V(4).Infof("Deleting failed pod %s/%s on node %s has been limited by backoff - %v remaining",
-						pod.Namespace, pod.Name, node.Name, delay)
-					durationStore.Push(keyFunc(ds), delay)
-					continue
-				}
-
-				dsc.failedPodsBackoff.Next(backoffKey, now)
-
-				msg := fmt.Sprintf("Found failed daemon pod %s/%s on node %s, will try to kill it", pod.Namespace, pod.Name, node.Name)
-				klog.V(2).Infof(msg)
-				// Emit an event so that it's discoverable to users.
-				dsc.eventRecorder.Eventf(ds, corev1.EventTypeWarning, FailedDaemonPodReason, msg)
-				podsToDelete = append(podsToDelete, pod.Name)
-			} else {
-				daemonPodsRunning = append(daemonPodsRunning, pod)
-			}
-		}
-
-		// When surge is not enabled, if there is more than 1 running pod on a node delete all but the oldest
-		if !allowSurge(ds) {
-			if len(daemonPodsRunning) <= 1 {
-				// There are no excess pods to be pruned, and no pods to create
-				break
-			}
-
-			sort.Sort(podByCreationTimestampAndPhase(daemonPodsRunning))
-			for i := 1; i < len(daemonPodsRunning); i++ {
-				podsToDelete = append(podsToDelete, daemonPodsRunning[i].Name)
-			}
-			break
-		}
-
-		if len(daemonPodsRunning) <= 1 {
-			// // There are no excess pods to be pruned
-			if len(daemonPodsRunning) == 0 && shouldRun {
-				// We are surging so we need to have at least one non-deleted pod on the node
-				nodesNeedingDaemonPods = append(nodesNeedingDaemonPods, node.Name)
-			}
-			break
-		}
-
-		// When surge is enabled, we allow 2 pods if and only if the oldest pod matching the current hash state
-		// is not ready AND the oldest pod that doesn't match the current hash state is ready. All other pods are
-		// deleted. If neither pod is ready, only the one matching the current hash revision is kept.
-		var oldestNewPod, oldestOldPod *corev1.Pod
-		sort.Sort(podByCreationTimestampAndPhase(daemonPodsRunning))
-		for _, pod := range daemonPodsRunning {
-			if pod.Labels[apps.ControllerRevisionHashLabelKey] == hash {
-				if oldestNewPod == nil {
-					oldestNewPod = pod
-					continue
-				}
-			} else {
-				if oldestOldPod == nil {
-					oldestOldPod = pod
-					continue
-				}
-			}
-			podsToDelete = append(podsToDelete, pod.Name)
-		}
-		if oldestNewPod != nil && oldestOldPod != nil {
-			switch {
-			case !podutil.IsPodReady(oldestOldPod):
-				klog.V(5).Infof("Pod %s/%s from daemonset %s is no longer ready and will be replaced with newer pod %s", oldestOldPod.Namespace, oldestOldPod.Name, ds.Name, oldestNewPod.Name)
-				podsToDelete = append(podsToDelete, oldestOldPod.Name)
-			case podutil.IsPodAvailable(oldestNewPod, ds.Spec.MinReadySeconds, metav1.Time{Time: dsc.failedPodsBackoff.Clock.Now()}):
-				klog.V(5).Infof("Pod %s/%s from daemonset %s is now ready and will replace older pod %s", oldestNewPod.Namespace, oldestNewPod.Name, ds.Name, oldestOldPod.Name)
-				podsToDelete = append(podsToDelete, oldestOldPod.Name)
-			case podutil.IsPodReady(oldestNewPod) && ds.Spec.MinReadySeconds > 0:
-				durationStore.Push(keyFunc(ds), podAvailableWaitingTime(oldestNewPod, ds.Spec.MinReadySeconds, dsc.failedPodsBackoff.Clock.Now()))
-			}
-		}
-
-	case !shouldContinueRunning && exists:
-		// If daemon pod isn't supposed to run on node, but it is, delete all daemon pods on node.
-		for _, pod := range daemonPods {
-			if pod.DeletionTimestamp != nil {
-				continue
-			}
-			klog.V(5).Infof("If daemon pod isn't supposed to run on node %s, but it is, delete daemon pod %s/%s on node.", node.Name, pod.Namespace, pod.Name)
-			podsToDelete = append(podsToDelete, pod.Name)
-		}
-	}
-
-	return nodesNeedingDaemonPods, podsToDelete
-}
-
 // getNodesToDaemonPods returns a map from nodes to daemon pods (corresponding to ds) created for the nodes.
 // This also reconciles ControllerRef by adopting/orphaning.
 // Note that returned Pods are pointers to objects in the cache.
@@ -765,48 +633,4 @@ func (o podByCreationTimestampAndPhase) Less(i, j int) bool {
 		return o[i].Name < o[j].Name
 	}
 	return o[i].CreationTimestamp.Before(&o[j].CreationTimestamp)
-}
-
-func (dsc *ReconcileDaemonSet) cleanupHistory(ds *apps.DaemonSet, old []*apps.ControllerRevision) error {
-	nodesToDaemonPods, err := dsc.getNodesToDaemonPods(ds)
-	if err != nil {
-		return fmt.Errorf("couldn't get node to daemon pod mapping for DaemonSet %q: %v", ds.Name, err)
-	}
-
-	toKeep := 10
-	if ds.Spec.RevisionHistoryLimit != nil {
-		toKeep = int(*ds.Spec.RevisionHistoryLimit)
-	}
-	toKill := len(old) - toKeep
-	if toKill <= 0 {
-		return nil
-	}
-
-	// Find all hashes of live pods
-	liveHashes := make(map[string]bool)
-	for _, pods := range nodesToDaemonPods {
-		for _, pod := range pods {
-			if hash := pod.Labels[apps.DefaultDaemonSetUniqueLabelKey]; len(hash) > 0 {
-				liveHashes[hash] = true
-			}
-		}
-	}
-
-	// Clean up old history from smallest to highest revision (from oldest to newest)
-	sort.Sort(historiesByRevision(old))
-	for _, history := range old {
-		if toKill <= 0 {
-			break
-		}
-		if hash := history.Labels[apps.DefaultDaemonSetUniqueLabelKey]; liveHashes[hash] {
-			continue
-		}
-		// Clean up
-		err := dsc.kubeClient.AppsV1().ControllerRevisions(ds.Namespace).Delete(context.TODO(), history.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-		toKill--
-	}
-	return nil
 }
