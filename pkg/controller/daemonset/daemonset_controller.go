@@ -207,17 +207,19 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			}
 
 			// check DeploymentPaused
+			isPaused := false
 			if DeploymentPaused, found := newDS.Annotations[string(appspub.DaemonSetDeploymentPausedKey)]; found {
 				if DeploymentPaused == "true" {
 					klog.V(4).Infof("DaemonSet %s/%s is paused, skip update", newDS.Namespace, newDS.Name)
-					return false
+					isPaused = true
 				}
 			}
 
-			if oldDS.Spec.Template.Spec.Containers[0].Image == newDS.Spec.Template.Spec.Containers[0].Image {
+			if !isPaused && oldDS.Spec.Template.Spec.Containers[0].Image == newDS.Spec.Template.Spec.Containers[0].Image {
 				klog.V(4).Infof("Updating DaemonSet %s/%s, no container change, skip", newDS.Namespace, newDS.Name)
 				return false
 			}
+
 			klog.V(4).Infof("Updating DaemonSet %s/%s", newDS.Namespace, newDS.Name)
 			return true
 		},
@@ -397,7 +399,18 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 		durationStore.Push(keyFunc(ds), time.Duration(5)*time.Second)
 		return nil
 	}
+
 	hash := curVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
+	klog.Infof("Check rollback %v for %s/%s", ds.Namespace, ds.Name)
+	dsc.rollback(ds, nodeList, hash)
+	if err != nil {
+		return err
+	}
+
+	if isDaemonSetPaused(ds) {
+		return nil
+	}
+
 	klog.Infof("syncDaemonSet , get ds hash %v for %s/%s", hash, ds.Namespace, ds.Name)
 	err = dsc.manage(ds, nodeList, hash)
 	if err != nil {
