@@ -59,7 +59,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		return fmt.Errorf("Failed to get rollback version for %s/%s: %v", ds.Namespace, ds.Name, err)
 	}
 
-	hash := rbVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
+	oldHash := rbVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
 	oldDs, err := dsc.applyDaemonSetHistory(ds, rbVersion)
 	if err != nil {
 		klog.V(3).Infof("Failed to get old version for DaemonSet %s/%s", ds.Namespace, ds.Name)
@@ -68,7 +68,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 
 	for _, pod := range podsToRollback {
 		ctx := context.TODO()
-		err := dsc.rollbackToTemplate(ctx, oldDs, pod, hash)
+		err := dsc.rollbackToTemplate(ctx, oldDs, pod, oldHash)
 		if err == nil {
 			dsc.emitRollbackNormalEvent(ds, fmt.Sprintf("Rolled back ds %v/%v pod %v to revision %d", ds.Namespace, ds.Name, pod.Name, rbVersion.Revision))
 		} else {
