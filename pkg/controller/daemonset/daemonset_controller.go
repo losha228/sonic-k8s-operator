@@ -413,16 +413,17 @@ func (dsc *ReconcileDaemonSet) syncDaemonSet(request reconcile.Request) error {
 	}
 
 	if isDaemonSetPaused(ds) {
+		klog.Infof("Daemonset %s/%s is paused, skip...", ds.Namespace, ds.Name)
 		return nil
 	}
 
-	klog.Infof("syncDaemonSet , get ds hash %v for %s/%s", hash, ds.Namespace, ds.Name)
+	klog.Infof("Get ds hash %v for %s/%s", hash, ds.Namespace, ds.Name)
 	err = dsc.manage(ds, nodeList, hash)
 	if err != nil {
 		return err
 	}
 
-	klog.Infof("syncDaemonSet: start rolling update for %s/%s", ds.Namespace, ds.Name)
+	klog.Infof("Start rolling update for %s/%s", ds.Namespace, ds.Name)
 	err = dsc.rollingUpdate(ds, nodeList, hash)
 	if err != nil {
 		return err
