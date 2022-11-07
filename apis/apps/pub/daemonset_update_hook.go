@@ -32,7 +32,8 @@ const (
 	DaemonSetHookStateCompleted DaemonsetHookStateType = "completed"
 	DaemonSetHookStateFailed    DaemonsetHookStateType = "failed"
 
-	DaemonSetDeploymentPausedKey = "deployment.daemonset.sonic/paused"
+	DaemonSetDeploymentPausedKey          = "deployment.daemonset.sonic/paused"
+	DaemonSetDeploymentRollbackEnabledKey = "deployment.daemonset.sonic/rollback-enabled"
 )
 
 type DaemonsetHookStateType string

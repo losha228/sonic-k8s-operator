@@ -19,7 +19,6 @@ package daemonset
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -28,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 )
@@ -39,9 +39,40 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	lock := lockObj.(*sync.Mutex)
 	lock.Lock()
 	defer lock.Unlock()
+	isContinue := false
+	if rollbackEnabled, found := ds.Annotations[appspub.DaemonSetDeploymentRollbackEnabledKey]; found {
+		if strings.EqualFold(rollbackEnabled, "true") {
+			isContinue = true
+		}
+	}
+
+	if !isContinue {
+		klog.V(3).Infof("Rollback is disabled for DaemonSet %s/%s : %v", ds.Namespace, ds.Name)
+		return nil
+	}
+
 	nodeToDaemonPods, err := dsc.getNodesToDaemonPods(ds)
 	if err != nil {
 		return fmt.Errorf("couldn't get node to daemon pod mapping for daemon set %q: %v", ds.Name, err)
+	}
+
+	// get the rollback version
+	rbVersion, err := dsc.getRollbackDsVersion(ds)
+	if err != nil {
+		klog.V(3).Infof("Failed to get rollback version for DaemonSet %s/%s : %v", ds.Namespace, ds.Name, err)
+		return fmt.Errorf("Failed to get rollback version for %s/%s: %v", ds.Namespace, ds.Name, err)
+	}
+
+	if rbVersion == nil {
+		return nil
+	}
+
+	// there are more than 1 version of ds, need to check if rollback is doable
+	err = dsc.CanRollback(ds, rbVersion)
+	if err != nil {
+		dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
+		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v", ds.Namespace, ds.Name, err)
+		return fmt.Errorf("Pause ds %s/%s because its pod can not rollback.", ds.Namespace, ds.Name)
 	}
 
 	// filter the pods to rollback
@@ -55,17 +86,11 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 		klog.V(3).Infof("DaemonSet %s/%s, no pod for rollback.", ds.Namespace, ds.Name)
 		return nil
 	}
+
 	// pause ds update
 	klog.V(3).Infof("Pause daemonSet %s/%s due to rollback is needed.", ds.Namespace, ds.Name)
 	dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
 	klog.V(3).Infof("DaemonSet %s/%s, found %v pod to rollback", ds.Namespace, ds.Name, len(podsToRollback))
-
-	// get the rollback version
-	rbVersion, err := dsc.getRollbackDsVersion(ds)
-	if err != nil {
-		klog.V(3).Infof("Failed to get rollback version for DaemonSet %s/%s : %v", ds.Namespace, ds.Name, err)
-		return fmt.Errorf("Failed to get rollback version for %s/%s: %v", ds.Namespace, ds.Name, err)
-	}
 
 	oldHash := rbVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
 	oldPodGeneration := rbVersion.Annotations[apps.DeprecatedTemplateGeneration]
@@ -91,9 +116,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	return err
 }
 
-// rollbackToTemplate compares the templates of the provided deployment and replica set and
-// updates the deployment with the replica set template in case they are different. It also
-// cleans up the rollback spec so subsequent requeues of the deployment won't end up in here.
+// rollbackToTemplate compares the templates
 func (dsc *ReconcileDaemonSet) rollbackToTemplate(ctx context.Context, ds *apps.DaemonSet, pod *corev1.Pod, hash, podGeneration string) error {
 	if !EqualIgnoreHash(&ds.Spec.Template.Spec, &pod.Spec) {
 		klog.V(4).Infof("Rolling back ds %v/%v pod %v to template spec %+v", ds.Namespace, ds.Name, pod.Name, ds.Spec.Template.Spec)
@@ -148,33 +171,37 @@ func (dsc *ReconcileDaemonSet) emitRollbackNormalEvent(ds *apps.DaemonSet, messa
 	dsc.eventRecorder.Eventf(ds, v1.EventTypeNormal, "RollbackDone", message)
 }
 
-// TODO: Remove this when extensions/v1beta1 and apps/v1beta1 Deployment are dropped.
-func getRollbackTo(d *apps.Deployment) *extensions.RollbackConfig {
-	// Extract the annotation used for round-tripping the deprecated RollbackTo field.
-	revision := d.Annotations[apps.DeprecatedRollbackTo]
-	if revision == "" {
-		return nil
-	}
-	revision64, err := strconv.ParseInt(revision, 10, 64)
+func (dsc *ReconcileDaemonSet) CanRollback(ds *apps.DaemonSet, version *apps.ControllerRevision) error {
+	// compare pod spec
+	// Patching Pod may not change fields other than spec.containers[*].image, spec.initContainers[*].image, spec.activeDeadlineSeconds or spec.tolerations (only additions to existing tolerations).
+	// other field changes will not allow rollback
+	oldDs, err := dsc.applyDaemonSetHistory(ds, version)
 	if err != nil {
-		// If it's invalid, ignore it.
-		return nil
+		return err
 	}
-	return &extensions.RollbackConfig{
-		Revision: revision64,
-	}
-}
 
-// TODO: Remove this when extensions/v1beta1 and apps/v1beta1 Deployment are dropped.
-func setRollbackTo(d *apps.DaemonSet, rollbackTo *extensions.RollbackConfig) {
-	if rollbackTo == nil {
-		delete(d.Annotations, apps.DeprecatedRollbackTo)
-		return
+	if len(ds.Spec.Template.Spec.Containers) != len(oldDs.Spec.Template.Spec.InitContainers) || len(ds.Spec.Template.Spec.InitContainers) != len(oldDs.Spec.Template.Spec.Containers) {
+		return fmt.Errorf("Containers count change, rollback is not doable")
 	}
-	if d.Annotations == nil {
-		d.Annotations = make(map[string]string)
+
+	// update new ds image by old version
+	for i, c := range ds.Spec.Template.Spec.Containers {
+		c.Image = oldDs.Spec.Template.Spec.Containers[i].Image
 	}
-	d.Annotations[apps.DeprecatedRollbackTo] = strconv.FormatInt(rollbackTo.Revision, 10)
+
+	for i, c := range ds.Spec.Template.Spec.InitContainers {
+		c.Image = oldDs.Spec.Template.Spec.InitContainers[i].Image
+	}
+
+	// now compare the pod spec to see if there is change other than container image
+	t1Copy := ds.Spec.Template.Spec.DeepCopy()
+	t2Copy := oldDs.Spec.Template.Spec.DeepCopy()
+	ok := apiequality.Semantic.DeepEqual(t1Copy, t2Copy)
+	if !ok {
+		return fmt.Errorf("There are changes other than container image, rollback is not supported.")
+	}
+
+	return nil
 }
 
 func (dsc *ReconcileDaemonSet) filterDaemonPodsNodeToRollback(ds *apps.DaemonSet, nodeList []*corev1.Node, hash string, nodeToDaemonPods map[string][]*corev1.Pod) ([]*corev1.Pod, error) {

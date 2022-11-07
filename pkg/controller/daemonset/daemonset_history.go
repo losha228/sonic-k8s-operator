@@ -394,7 +394,9 @@ func (dsc *ReconcileDaemonSet) getRollbackDsVersion(ds *apps.DaemonSet) (*apps.C
 	}
 
 	if len(keys) < 2 {
-		return nil, fmt.Errorf("No rollback found due to no update found for ds %s/%s", ds.Namespace, ds.Name)
+		// no rollback
+		klog.Infof("No rollback found due to no update found for ds %s/%s", ds.Namespace, ds.Name)
+		return nil, nil
 	}
 
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
