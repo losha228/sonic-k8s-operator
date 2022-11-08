@@ -70,8 +70,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	// there are more than 1 version of ds, need to check if rollback is doable
 	err = dsc.canRollback(ds, rbVersion)
 	if err != nil {
-		ds.Annotations[string(appspub.DaemonSetDeploymentPausedKey)] = "true"
-		dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
+		dsc.PauseDaemonSet(ds, fmt.Sprintf("Rollback for DaemonSet %s/%s can not support: %v, please disable it.", ds.Namespace, ds.Name, err))
 		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v, please disable it.", ds.Namespace, ds.Name, err)
 		dsc.emitRollbackWarningEvent(ds, "RollbackNotSupport", fmt.Sprintf("%v", err))
 		return fmt.Errorf("Pause ds %s/%s because its pod can not rollback.", ds.Namespace, ds.Name)
@@ -91,7 +90,8 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 
 	// pause ds update
 	klog.V(3).Infof("Pause daemonSet %s/%s due to rollback is needed.", ds.Namespace, ds.Name)
-	dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
+	dsc.PauseDaemonSet(ds, fmt.Sprintf("Rollback is needed for DaemonSet %s/%s", ds.Namespace, ds.Name))
+
 	klog.V(3).Infof("DaemonSet %s/%s, found %v pod to rollback", ds.Namespace, ds.Name, len(podsToRollback))
 
 	oldHash := rbVersion.Labels[apps.DefaultDaemonSetUniqueLabelKey]
@@ -241,4 +241,16 @@ func (dsc *ReconcileDaemonSet) filterDaemonPodsNodeToRollback(ds *apps.DaemonSet
 	}
 
 	return updatedFailed, nil
+}
+
+func (dsc *ReconcileDaemonSet) PauseDaemonSet(ds *apps.DaemonSet, reason string) error {
+	if key, found := ds.Annotations[appspub.DaemonSetDeploymentPausedKey]; found && strings.EqualFold("true", key) {
+		return nil
+	}
+	ds.Annotations[string(appspub.DaemonSetDeploymentPausedKey)] = "true"
+	updated, err := dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
+	msg := fmt.Sprintf("Pause daemonSet %s/%s result, updated %v, err: %v.", ds.Namespace, ds.Name, updated, err)
+	klog.V(3).Infof(msg)
+	dsc.emitRollbackWarningEvent(ds, reason, msg)
+	return err
 }
