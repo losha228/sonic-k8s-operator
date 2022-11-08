@@ -70,6 +70,7 @@ func (dsc *ReconcileDaemonSet) rollback(ds *apps.DaemonSet, nodeList []*corev1.N
 	// there are more than 1 version of ds, need to check if rollback is doable
 	err = dsc.canRollback(ds, rbVersion)
 	if err != nil {
+		ds.Annotations[string(appspub.DaemonSetDeploymentPausedKey)] = "true"
 		dsc.UpdateDsAnnotation(ds, string(appspub.DaemonSetDeploymentPausedKey), "true")
 		klog.V(3).Infof("Rollback for DaemonSet %s/%s can not support: %v, please disable it.", ds.Namespace, ds.Name, err)
 		dsc.emitRollbackWarningEvent(ds, "RollbackNotSupport", fmt.Sprintf("%v", err))

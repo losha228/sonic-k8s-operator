@@ -323,11 +323,6 @@ func allowSurge(ds *apps.DaemonSet) bool {
 // out of numberToSchedule if surge is configured, or an error if the surge percentage
 // requested is invalid.
 func surgeCount(ds *apps.DaemonSet, numberToSchedule int) (int, error) {
-	/*
-		if ds.Spec.UpdateStrategy.Type != appsv1alpha1.RollingUpdateDaemonSetStrategyType {
-			return 0, nil
-		}
-	*/
 	r := ds.Spec.UpdateStrategy.RollingUpdate
 	if r == nil {
 		return 0, nil
@@ -413,28 +408,10 @@ func findUpdatedPodsOnNode(ds *apps.DaemonSet, podsOnNode []*corev1.Pod, hash st
 	return newPod, oldPod, true
 }
 
-// NodeShouldUpdateBySelector checks if the node is selected to upgrade for ds's gray update selector.
+// NodeShouldUpdateBySelector checks if the node is selected to upgrade for ds's update selector.
 // This function does not check NodeShouldRunDaemonPod
 func NodeShouldUpdateBySelector(node *corev1.Node, ds *apps.DaemonSet) bool {
-
-	/*
-		switch ds.Spec.UpdateStrategy.Type {
-		case appsv1alpha1.OnDeleteDaemonSetStrategyType:
-			return false
-		case appsv1alpha1.RollingUpdateDaemonSetStrategyType:
-			if ds.Spec.UpdateStrategy.RollingUpdate == nil || ds.Spec.UpdateStrategy.RollingUpdate.Selector == nil {
-				return false
-			}
-			selector, err := kruiseutil.ValidatedLabelSelectorAsSelector(ds.Spec.UpdateStrategy.RollingUpdate.Selector)
-			if err != nil {
-				// this should not happen if the DaemonSet passed validation
-				return false
-			}
-			return !selector.Empty() && selector.Matches(labels.Set(node.Labels))
-		default:
-			return false
-		}
-	*/
+	// TO-DO: do we need this function
 	return false
 }
 
