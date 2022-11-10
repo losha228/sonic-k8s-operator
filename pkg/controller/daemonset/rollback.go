@@ -175,7 +175,7 @@ func (dsc *ReconcileDaemonSet) canRollback(ds *apps.DaemonSet, version *apps.Con
 	// other field changes will not allow rollback
 	oldDs, err := dsc.applyDaemonSetHistory(ds, version)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to get ds history version %v", err)
 	}
 
 	if len(ds.Spec.Template.Spec.Containers) != len(oldDs.Spec.Template.Spec.InitContainers) || len(ds.Spec.Template.Spec.InitContainers) != len(oldDs.Spec.Template.Spec.Containers) {
