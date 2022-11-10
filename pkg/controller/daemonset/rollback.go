@@ -198,7 +198,7 @@ func (dsc *ReconcileDaemonSet) canRollback(ds *apps.DaemonSet, version *apps.Con
 	oldPodSpecCopy := oldDs.Spec.Template.Spec.DeepCopy()
 	ok := apiequality.Semantic.DeepEqual(newPodSpecCopy, oldPodSpecCopy)
 	if !ok {
-		return fmt.Errorf("There are changes other than container image, rollback is not supported.")
+		return fmt.Errorf("There are changes other than container image, rollback is not supported. old pod spec: %v, new pod spec: %v", newPodSpecCopy, oldPodSpecCopy)
 	}
 
 	return nil
