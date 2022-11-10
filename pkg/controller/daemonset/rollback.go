@@ -179,7 +179,7 @@ func (dsc *ReconcileDaemonSet) canRollback(ds *apps.DaemonSet, version *apps.Con
 	}
 
 	if len(ds.Spec.Template.Spec.Containers) != len(oldDs.Spec.Template.Spec.InitContainers) || len(ds.Spec.Template.Spec.InitContainers) != len(oldDs.Spec.Template.Spec.Containers) {
-		return fmt.Errorf("Containers count change, rollback is not doable")
+		return fmt.Errorf("Containers count change, new ds counter count: %v, old ds container count: %v, rollback is not doable.", len(ds.Spec.Template.Spec.Containers), len(oldDs.Spec.Template.Spec.InitContainers))
 	}
 
 	newDs := ds.DeepCopy()
