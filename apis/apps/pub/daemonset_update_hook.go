@@ -34,6 +34,7 @@ const (
 
 	DaemonSetDeploymentPausedKey          = "deployment.daemonset.sonic/paused"
 	DaemonSetDeploymentRollbackEnabledKey = "deployment.daemonset.sonic/rollback-enabled"
+	DaemonSetWebhookValidationEnableddKey = "webhookvalidation.daemonset.sonic/enabled"
 )
 
 type DaemonsetHookStateType string

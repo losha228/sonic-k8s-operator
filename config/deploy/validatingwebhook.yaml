@@ -6,6 +6,11 @@ metadata:
     app: sonic-daemonset
 webhooks:
   - name: sonic.daemonset.io
+    namespaceSelector:
+      matchExpressions:
+       - key: webhookvalidation.daemonset.sonic/enabled
+          operator: In
+          values: ["true","True"]
     clientConfig:
       service:
         name: sonic-k8s-webhook-service
@@ -17,6 +22,7 @@ webhooks:
         apiGroups: ["apps", ""]
         apiVersions: ["*"]
         resources: ["daemonsets"]
+        scope: "Namespaced"
     sideEffects: None
     timeoutSeconds: 30
     admissionReviewVersions: ["v1"]
